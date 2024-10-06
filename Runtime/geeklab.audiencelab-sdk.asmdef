@@ -1,0 +1,39 @@
+{
+    "name": "geeklab.audiencelab-sdk",
+    "rootNamespace": "",
+    "references": [
+        "Purchasing.Common",
+        "UnityEngine.Purchasing",
+        "UnityEditor.Purchasing",
+        "UnityEngine.Advertisements",
+        "UnityEngine.Purchasing.Stores",
+        "UnityEngine.Monetization",
+        "Unity.Services.Core"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor",
+        "iOS"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.ads",
+            "expression": "4.0.0",
+            "define": "UNITY_ADD_NEW"
+        },
+        {
+            "name": "com.unity.purchasing",
+            "expression": "4.4.1",
+            "define": "UNITY_PURCHASING_NEW"
+        }
+    ],
+    "noEngineReferences": false
+}
