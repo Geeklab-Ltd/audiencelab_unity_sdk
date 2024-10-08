@@ -12,7 +12,6 @@ In the wake of Apple's ATT, mobile advertisers have lost visibility into ad perf
 
 Developers and marketers will need to:
 
-- Run user acquisition campaigns on Google UAC.
 - Develop their game using Unity.
 - Integrate Geeklab’s AudienceLab Unity SDK.
 
