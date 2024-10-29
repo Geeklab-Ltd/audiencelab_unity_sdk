@@ -17,7 +17,7 @@ namespace Geeklab.AudiencelabSDK
         
 
 
-        public static void SendCustomAdEvent(string ad_id, string name, string source, int watch_time, bool reward, string media_source, string channel)
+        public static void SendCustomAdEvent(string ad_id, string name, string source, int watch_time, bool reward, string media_source, string channel, double value, string currency)
         {
             if (!SDKSettingsModel.Instance.IsSDKEnabled) 
                 return;
@@ -33,6 +33,8 @@ namespace Geeklab.AudiencelabSDK
                 reward = reward,
                 media_source = media_source,
                 channel = channel,
+                value = value,
+                currency = currency
                 };      
 
             SendMetrics(data, true);

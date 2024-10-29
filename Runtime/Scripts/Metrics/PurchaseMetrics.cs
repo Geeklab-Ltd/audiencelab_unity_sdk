@@ -11,7 +11,7 @@ namespace Geeklab.AudiencelabSDK
     {
   
         public static PurchaseMetrics Instance;
-        public static void SendCustomPurchaseEvent(string id, string name, int value, string currency, string status)
+        public static void SendCustomPurchaseEvent(string id, string name, double value, string currency, string status)
         {
             if (!IsConfigFullyEnabled())
                 return;
@@ -36,7 +36,7 @@ namespace Geeklab.AudiencelabSDK
         }
 
         private static string token;
-        private static int valueOfPurchase;
+        private static double valueOfPurchase;
         private static string idOfPurchasedItem;
 
          private static bool IsConfigFullyEnabled()

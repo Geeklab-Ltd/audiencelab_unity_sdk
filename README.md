@@ -74,7 +74,17 @@ This function is used to track custom purchase events within your application.
 **Example Usage**:
 
 ```csharp
-SendCustomPurchaseEvent("123", "Premium Pack", 299, "USD", "Completed");
+PurchaseMetrics.SendCustomPurchaseEvent("123", "Premium Pack", 0.99, "USD", "Completed");
+```
+
+```json
+{
+  "item_id": "string",
+  "item_name": "string",
+  "value": "double",
+  "currency": "string",
+  "status": "string"
+}
 ```
 
 ### SendCustomAdEvent Function
@@ -91,7 +101,21 @@ This function allows for tracking ad views with detailed information about the i
 **Example Usage**:
 
 ```csharp
-SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true, "Google", "CampaignA");
+AdMetrics.SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true, "Google", "CampaignA", 0.04, "USD");
+```
+
+```json
+{
+  "ad_id": "string",
+  "name": "string",
+  "source": "string",
+  "watch_time": "int",
+  "reward": "bool",
+  "media_source": "string",
+  "channel": "string",
+  "value": "double",
+  "currency": "string"
+}
 ```
 
 ## Conclusion

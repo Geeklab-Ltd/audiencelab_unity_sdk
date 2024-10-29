@@ -29,3 +29,11 @@
 - Cleaned up the codebase.
 - Optimized the SDK for performance.
 - Improved the documentation.
+
+## [0.9.5] - 2024-10-29
+
+### Changed
+
+- Modified the ad payload to include revenue and currency
+- Modified the value data types to [double] from [int]
+- Added the data types to #readme tutorial
