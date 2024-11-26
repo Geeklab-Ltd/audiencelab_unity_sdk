@@ -8,9 +8,7 @@ namespace Geeklab.AudiencelabSDK
 {
     public class UserMetrics : MonoBehaviour
     {
-        private static int daysLoggedIn;
         private static float sessionTime;
-        private static int levelPassed;
         private static int timesTriedToFetchToken = 0;
 
         
@@ -34,9 +32,7 @@ namespace Geeklab.AudiencelabSDK
             else
             {
                 Debug.Log("Creative token found");
-                daysLoggedIn = 0;
                 sessionTime = 0.0f;
-                levelPassed = 0;
                 if (PlayerPrefs.GetString("firstLogin") == "")
                 {
                     InitializeFirstLogin(); 

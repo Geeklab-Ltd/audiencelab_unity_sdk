@@ -76,6 +76,8 @@ namespace Geeklab.AudiencelabSDK
         {
             var deviceGeneration = deviceModel.GetDeviceModel();
             var installedFonts = deviceModel.GetInstalledFonts();
+
+        
             
 #if UNITY_IOS && !UNITY_TVOS
             // deviceGeneration = GetDeviceModel();
@@ -89,6 +91,42 @@ namespace Geeklab.AudiencelabSDK
             {
                 installedFonts = javaClass.CallStatic<string>("GetInstalledFonts");
             }
+#endif
+
+            int nativeWidth;
+            int nativeHeight;
+
+#if UNITY_IOS && !UNITY_EDITOR
+
+    [DllImport("__Internal")]
+    static extern IntPtr _GetNativeScreenWidth();
+
+    [DllImport("__Internal")]
+    static extern IntPtr _GetNativeScreenHeight();
+
+    string nativeWidthString = Marshal.PtrToStringAnsi(_GetNativeScreenWidth());
+    string nativeHeightString = Marshal.PtrToStringAnsi(_GetNativeScreenHeight());
+
+    nativeWidth = Mathf.RoundToInt(float.Parse(nativeWidthString));
+    nativeHeight = Mathf.RoundToInt(float.Parse(nativeHeightString));
+
+    Debug.LogWarning($"Width: {nativeWidth}, Height: {nativeHeight}");
+#elif UNITY_ANDROID && !UNITY_EDITOR
+    // Use Android-specific methods for native resolution
+    using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+    {
+        using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+        using (var metrics = new AndroidJavaObject("android.util.DisplayMetrics"))
+        {
+            activity.Call("getWindowManager").Call<AndroidJavaObject>("getDefaultDisplay").Call("getMetrics", metrics);
+            nativeWidth = metrics.Get<int>("widthPixels");
+            nativeHeight = metrics.Get<int>("heightPixels");
+        }
+    }
+#else
+    // Use Screen.currentResolution as fallback
+    nativeWidth = Screen.currentResolution.width;
+    nativeHeight = Screen.currentResolution.height;
 #endif
             
             var installedFontsArray = installedFonts.Split(',');
@@ -120,6 +158,8 @@ namespace Geeklab.AudiencelabSDK
                 Dpi = Screen.dpi,
                 Width = Screen.width,
                 Height = Screen.height,
+                NativeHeight = nativeHeight,
+                NativeWidth = nativeWidth,
                 LowPower = SystemInfo.batteryLevel < 0.2f,
                 Timezone = timeZone,
                 OsVersion = SystemInfo.operatingSystem,
@@ -166,6 +206,7 @@ namespace Geeklab.AudiencelabSDK
             return await taskCompletionSource.Task;
         }
     }
+
 
 
     interface IDeviceModel {
