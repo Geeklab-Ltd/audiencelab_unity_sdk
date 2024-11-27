@@ -8,6 +8,8 @@ namespace Geeklab.AudiencelabSDK
         public float Dpi;
         public int Width;
         public int Height;
+        public int NativeWidth;
+        public int NativeHeight;
         public bool LowPower;
         public string Timezone;
         public string OsVersion;

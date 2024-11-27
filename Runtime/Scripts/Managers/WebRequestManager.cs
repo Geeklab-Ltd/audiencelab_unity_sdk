@@ -103,8 +103,10 @@ namespace Geeklab.AudiencelabSDK
                 gpu_vendor = SystemInfo.graphicsDeviceVendor,
                 gpu_version = SystemInfo.graphicsDeviceVersion,
                 gpu_content =  deviceInfo.GpuContent,
-                window_height = deviceInfo.Height,
-                window_width = deviceInfo.Width,
+                window_height = deviceInfo.NativeHeight,
+                legacy_height = deviceInfo.Height,
+                window_width = deviceInfo.NativeWidth,
+                legacy_width = deviceInfo.Width,
                 installed_fonts = deviceInfo.InstalledFonts,
                 low_battery_level = deviceInfo.LowPower,
                 os_system = deviceInfo.OsVersion,
@@ -120,9 +122,22 @@ namespace Geeklab.AudiencelabSDK
             };
             
             var json = JsonConvert.SerializeObject(postDataFull);
+            Debug.Log(json);
+            SendRequest(ApiEndpointsModel.FETCH_TOKEN, json, onSuccess, onError);
 
-            SendRequest(ApiEndpointsModel.FETCH_TOKEN, json, onSuccess, onError, UnityWebRequest.kHttpVerbPOST);
+        }
 
+        private string GetUtcOffset()
+        {
+            // Get current UTC offset
+            TimeSpan offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
+
+            // Format as "+HH:mm" or "-HH:mm"
+            string formattedOffset = offset >= TimeSpan.Zero
+                ? $"+{offset.Hours:D2}:{offset.Minutes:D2}"
+                : $"-{Math.Abs(offset.Hours):D2}:{Math.Abs(offset.Minutes):D2}";
+
+            return formattedOffset;
         }
 
         
@@ -134,6 +149,16 @@ namespace Geeklab.AudiencelabSDK
 
             var deviceInfo = DeviceInfoHandler.GetDeviceInfo();
 
+            // Get UTC offset
+
+            var utcOffset = GetUtcOffset();
+
+            string retentionDay = "";
+            if (PlayerPrefs.HasKey("retentionDay")) {
+                retentionDay = PlayerPrefs.GetInt("retentionDay").ToString();
+            } 
+
+
             var postData = new
             {
                 type = type,
@@ -142,6 +167,8 @@ namespace Geeklab.AudiencelabSDK
                 device_name = deviceInfo.DeviceName,
                 device_model = SystemInfo.deviceModel,
                 os_system = deviceInfo.OsVersion,
+                utc_offset = utcOffset,
+                retention_day = retentionDay,
                 payload = data
             };
             var json = JsonConvert.SerializeObject(postData);
