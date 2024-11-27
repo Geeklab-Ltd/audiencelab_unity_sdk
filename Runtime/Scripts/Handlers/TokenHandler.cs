@@ -11,7 +11,6 @@ namespace Geeklab.AudiencelabSDK
     {
         private const string TOKEN_KEY = "GeeklabCreativeToken";
         private static string creativeToken = "";
-        private static string lastCheckedToken = "";
 
         
         private void Start()

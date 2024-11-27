@@ -76,6 +76,8 @@ namespace Geeklab.AudiencelabSDK
         {
             var deviceGeneration = deviceModel.GetDeviceModel();
             var installedFonts = deviceModel.GetInstalledFonts();
+
+        
             
 #if UNITY_IOS && !UNITY_TVOS
             // deviceGeneration = GetDeviceModel();
@@ -89,6 +91,63 @@ namespace Geeklab.AudiencelabSDK
             {
                 installedFonts = javaClass.CallStatic<string>("GetInstalledFonts");
             }
+#endif
+
+            int nativeWidth;
+            int nativeHeight;
+
+#if UNITY_IOS && !UNITY_EDITOR
+
+    [DllImport("__Internal")]
+    static extern IntPtr _GetNativeScreenWidth();
+
+    [DllImport("__Internal")]
+    static extern IntPtr _GetNativeScreenHeight();
+
+     try
+    {
+        string nativeWidthString = Marshal.PtrToStringAnsi(_GetNativeScreenWidth());
+        string nativeHeightString = Marshal.PtrToStringAnsi(_GetNativeScreenHeight());
+
+        if (!string.IsNullOrEmpty(nativeWidthString) && !string.IsNullOrEmpty(nativeHeightString) &&
+            float.TryParse(nativeWidthString, out float width) && 
+            float.TryParse(nativeHeightString, out float height))
+        {
+            nativeWidth = Mathf.RoundToInt(width);
+            nativeHeight = Mathf.RoundToInt(height);
+        }
+        else
+        {
+            // Fallback to Screen resolution if parsing fails
+            nativeWidth = Screen.currentResolution.width;
+            nativeHeight = Screen.currentResolution.height;
+            Debug.LogWarning("Failed to get native resolution, using Screen.currentResolution as fallback");
+        }
+    }
+    catch (Exception e)
+    {
+        // Fallback to Screen resolution if any error occurs
+        nativeWidth = Screen.currentResolution.width;
+        nativeHeight = Screen.currentResolution.height;
+        Debug.LogError($"Error getting native resolution: {e.Message}. Using Screen.currentResolution as fallback");
+    }
+
+#elif UNITY_ANDROID && !UNITY_EDITOR
+    // Use Android-specific methods for native resolution
+    using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+    {
+        using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+        using (var metrics = new AndroidJavaObject("android.util.DisplayMetrics"))
+        {
+            activity.Call("getWindowManager").Call<AndroidJavaObject>("getDefaultDisplay").Call("getMetrics", metrics);
+            nativeWidth = metrics.Get<int>("widthPixels");
+            nativeHeight = metrics.Get<int>("heightPixels");
+        }
+    }
+#else
+    // Use Screen.currentResolution as fallback
+    nativeWidth = Screen.currentResolution.width;
+    nativeHeight = Screen.currentResolution.height;
 #endif
             
             var installedFontsArray = installedFonts.Split(',');
@@ -120,6 +179,8 @@ namespace Geeklab.AudiencelabSDK
                 Dpi = Screen.dpi,
                 Width = Screen.width,
                 Height = Screen.height,
+                NativeHeight = nativeHeight,
+                NativeWidth = nativeWidth,
                 LowPower = SystemInfo.batteryLevel < 0.2f,
                 Timezone = timeZone,
                 OsVersion = SystemInfo.operatingSystem,
@@ -166,6 +227,7 @@ namespace Geeklab.AudiencelabSDK
             return await taskCompletionSource.Task;
         }
     }
+
 
 
     interface IDeviceModel {
