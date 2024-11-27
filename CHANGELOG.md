@@ -1,11 +1,11 @@
 # Changelog
 
-## [0.9.51] - 2024-10-29
+## [0.9.51] - 2024-11-27
 
 ### Changed
 
 - Added support for Resolution Scaling
-- Added UTC offset and retentionDay to payload, to offer better granuality on creative level ROAS metrics.
+- Added UTC offset and retention day tracking to payload for more granular creative-level ROAS metrics and improved UTC-based analytics
 - Some minor clean up
 
 ## [0.9.5] - 2024-10-29

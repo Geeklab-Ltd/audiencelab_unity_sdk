@@ -153,12 +153,10 @@ namespace Geeklab.AudiencelabSDK
 
             var utcOffset = GetUtcOffset();
 
-            string retentionDay;
-            if (PlayerPrefs.HasKey("retentionDay") && PlayerPrefs.GetString("retentionDay") != "") {
-                retentionDay = PlayerPrefs.GetString("retentionDay");
-            } else {
-                retentionDay = "0";
-            }
+            string retentionDay = "";
+            if (PlayerPrefs.HasKey("retentionDay")) {
+                retentionDay = PlayerPrefs.GetInt("retentionDay").ToString();
+            } 
 
 
             var postData = new

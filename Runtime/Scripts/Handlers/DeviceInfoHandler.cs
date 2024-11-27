@@ -104,13 +104,34 @@ namespace Geeklab.AudiencelabSDK
     [DllImport("__Internal")]
     static extern IntPtr _GetNativeScreenHeight();
 
-    string nativeWidthString = Marshal.PtrToStringAnsi(_GetNativeScreenWidth());
-    string nativeHeightString = Marshal.PtrToStringAnsi(_GetNativeScreenHeight());
+     try
+    {
+        string nativeWidthString = Marshal.PtrToStringAnsi(_GetNativeScreenWidth());
+        string nativeHeightString = Marshal.PtrToStringAnsi(_GetNativeScreenHeight());
 
-    nativeWidth = Mathf.RoundToInt(float.Parse(nativeWidthString));
-    nativeHeight = Mathf.RoundToInt(float.Parse(nativeHeightString));
+        if (!string.IsNullOrEmpty(nativeWidthString) && !string.IsNullOrEmpty(nativeHeightString) &&
+            float.TryParse(nativeWidthString, out float width) && 
+            float.TryParse(nativeHeightString, out float height))
+        {
+            nativeWidth = Mathf.RoundToInt(width);
+            nativeHeight = Mathf.RoundToInt(height);
+        }
+        else
+        {
+            // Fallback to Screen resolution if parsing fails
+            nativeWidth = Screen.currentResolution.width;
+            nativeHeight = Screen.currentResolution.height;
+            Debug.LogWarning("Failed to get native resolution, using Screen.currentResolution as fallback");
+        }
+    }
+    catch (Exception e)
+    {
+        // Fallback to Screen resolution if any error occurs
+        nativeWidth = Screen.currentResolution.width;
+        nativeHeight = Screen.currentResolution.height;
+        Debug.LogError($"Error getting native resolution: {e.Message}. Using Screen.currentResolution as fallback");
+    }
 
-    Debug.LogWarning($"Width: {nativeWidth}, Height: {nativeHeight}");
 #elif UNITY_ANDROID && !UNITY_EDITOR
     // Use Android-specific methods for native resolution
     using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
