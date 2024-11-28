@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.52] - 2024-11-28
+
+### Hot Fix
+
+- Removed the un-necessary Android specific resolution scaling that could cause build errors.
+
 ## [0.9.51] - 2024-11-27
 
 ### Changed
