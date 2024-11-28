@@ -131,23 +131,10 @@ namespace Geeklab.AudiencelabSDK
         nativeHeight = Screen.currentResolution.height;
         Debug.LogError($"Error getting native resolution: {e.Message}. Using Screen.currentResolution as fallback");
     }
-
-#elif UNITY_ANDROID && !UNITY_EDITOR
-    // Use Android-specific methods for native resolution
-    using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-    {
-        using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
-        using (var metrics = new AndroidJavaObject("android.util.DisplayMetrics"))
-        {
-            activity.Call("getWindowManager").Call<AndroidJavaObject>("getDefaultDisplay").Call("getMetrics", metrics);
-            nativeWidth = metrics.Get<int>("widthPixels");
-            nativeHeight = metrics.Get<int>("heightPixels");
-        }
-    }
 #else
     // Use Screen.currentResolution as fallback
-    nativeWidth = Screen.currentResolution.width;
-    nativeHeight = Screen.currentResolution.height;
+    nativeWidth = Screen.width;
+    nativeHeight = Screen.height;
 #endif
             
             var installedFontsArray = installedFonts.Split(',');
