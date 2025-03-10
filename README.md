@@ -21,16 +21,33 @@ This section provides a step-by-step guide to integrate the AudienceLab SDK into
 
 ### Initial Setup
 
-1. **Download the SDK**: Obtain the latest version of the AudienceLab SDK ZIP file provided by Geeklab.
+There are two ways to integrate the AudienceLab SDK into your Unity project:
 
-2. **Import the SDK into Unity**:
+#### Option 1: Install via Git (Recommended)
 
-   - Unzip the downloaded SDK into your Unity project's `Packages` folder.
-   - Open your Unity project and ensure that the SDK contents are correctly imported.
+1. Open the Unity Package Manager (Window > Package Manager)
+2. Click the "+" button in the top-left corner
+3. Select "Add package from git URL..."
+4. Enter the following URL:
+   ```
+   https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git
+   ```
+5. Click "Add"
 
-3. **Resolve Dependencies**:
-   - Unity's dependency resolver will automatically start upon opening the project after the SDK has been added.
-   - Confirm that all dependencies are correctly installed without errors.
+#### Option 2: Manual Installation
+
+1. Download the latest AudienceLab SDK package from Geeklab
+2. Extract the ZIP file contents into your Unity project's `Packages` folder
+3. Open/reload your Unity project to import the SDK
+
+#### Dependencies
+
+After installing via either method:
+
+- Unity will automatically resolve and install required dependencies
+- Verify that Newtonsoft.Json (version 3.0.2 or higher) is installed
+- Check the Package Manager for any error messages
+- Ensure all dependencies are properly resolved before proceeding
 
 ### Configure the SDK
 
@@ -43,6 +60,7 @@ This section provides a step-by-step guide to integrate the AudienceLab SDK into
 
    - Enter the authentication token provided by AudienceLab in the setup modal.
    - Click "Verify" to link your Unity project with your configured application on AudienceLab.
+   - After verification, save the project and restart Unity to ensure the SDK token is properly saved and initialized. You can verify the token status in the SDK Settings window after restarting.
 
 3. **Enable Features**:
    - Ensure that `isSDKEnabled` and `SendStatistics` are checked to activate the SDK's core functionality.
@@ -96,11 +114,11 @@ PurchaseMetrics.SendCustomPurchaseEvent("123", "Premium Pack", 0.99, "USD", "Com
 
 ```json
 {
-	"item_id": "string",
-	"item_name": "string",
-	"value": "double",
-	"currency": "string",
-	"status": "string"
+  "item_id": "string",
+  "item_name": "string",
+  "value": "double",
+  "currency": "string",
+  "status": "string"
 }
 ```
 
@@ -123,15 +141,15 @@ AdMetrics.SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true
 
 ```json
 {
-	"ad_id": "string",
-	"name": "string",
-	"source": "string",
-	"watch_time": "int",
-	"reward": "bool",
-	"media_source": "string",
-	"channel": "string",
-	"value": "double",
-	"currency": "string"
+  "ad_id": "string",
+  "name": "string",
+  "source": "string",
+  "watch_time": "int",
+  "reward": "bool",
+  "media_source": "string",
+  "channel": "string",
+  "value": "double",
+  "currency": "string"
 }
 ```
 

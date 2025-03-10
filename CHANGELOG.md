@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.53] - 2025-03-10
+
+### Minor updates
+
+- Added automatic creation of Resources directory if missing during SDK installation
+- Implemented package identifier and ProGuard configuration for Android builds to prevent code obfuscation issues
+- Encapsulated JsonConverter within SDK namespace to avoid conflicts with other packages
+
 ## [0.9.52] - 2024-11-28
 
 ### Hot Fix

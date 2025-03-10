@@ -33,6 +33,12 @@ namespace Geeklab.AudiencelabSDK
             if (guids.Length == 0)
             {
 #if UNITY_EDITOR
+                var resourcesPath = "Assets/Resources";
+                if (!AssetDatabase.IsValidFolder(resourcesPath))
+                {
+                    AssetDatabase.CreateFolder("Assets", "Resources");
+                }
+                
                 var instance = CreateInstance<SDKSettingsModel>();
                 AssetDatabase.CreateAsset(instance, "Assets/Resources/SDKSettings.asset");
                 AssetDatabase.SaveAssets();
