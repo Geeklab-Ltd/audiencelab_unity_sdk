@@ -79,9 +79,9 @@ namespace Geeklab.AudiencelabSDK
         
         public void VerifyCreativeTokenRequest(string token, Action<string> onSuccess = null, Action<string> onError = null)
         {
-            var postData = new
+            var postData = new TokenVerificationRequest
             {
-                token = token,
+                token = token
             };
             var json = JsonConvert.SerializeObject(postData);
             SendRequest(ApiEndpointsModel.VERIFY_TOKEN, json, onSuccess, onError);
@@ -90,19 +90,19 @@ namespace Geeklab.AudiencelabSDK
 
         public void FetchTokenRequest(Action<string> onSuccess, Action<string> onError = null)
         {
-
             var currentDate = DateTime.Now;
             var currentDateText = currentDate.ToString("yyyy-MM-dd HH:mm:ss");
 
             var deviceInfo = DeviceInfoHandler.GetDeviceInfo();
-            var postData = new
+            
+            var postData = new DeviceMetricsData
             {
                 device_name = deviceInfo.DeviceName,
                 dpi = (int)deviceInfo.Dpi,
                 gpu_rendered = SystemInfo.graphicsDeviceID.ToString(),
                 gpu_vendor = SystemInfo.graphicsDeviceVendor,
                 gpu_version = SystemInfo.graphicsDeviceVersion,
-                gpu_content =  deviceInfo.GpuContent,
+                gpu_content = deviceInfo.GpuContent.ToString() ,
                 window_height = deviceInfo.NativeHeight,
                 legacy_height = deviceInfo.Height,
                 window_width = deviceInfo.NativeWidth,
@@ -111,20 +111,19 @@ namespace Geeklab.AudiencelabSDK
                 low_battery_level = deviceInfo.LowPower,
                 os_system = deviceInfo.OsVersion,
                 device_model = SystemInfo.deviceModel,
-                timezone = deviceInfo.Timezone, 
+                timezone = deviceInfo.Timezone,
             };
 
-            var postDataFull = new
+            var postDataFull = new DeviceMetricsRequest
             {
                 type = "device-metrics",
                 data = postData,
-                created_at = currentDateText,
+                created_at = currentDateText
             };
             
             var json = JsonConvert.SerializeObject(postDataFull);
             Debug.Log(json);
             SendRequest(ApiEndpointsModel.FETCH_TOKEN, json, onSuccess, onError);
-
         }
 
         private string GetUtcOffset()
@@ -143,14 +142,9 @@ namespace Geeklab.AudiencelabSDK
         
         private void SendWebhookRequest(string type, object data, Action<string> onSuccess = null, Action<string> onError = null)
         {
-
             var currentDate = DateTime.Now;
             var currentDateText = currentDate.ToString("yyyy-MM-dd HH:mm:ss");
-
             var deviceInfo = DeviceInfoHandler.GetDeviceInfo();
-
-            // Get UTC offset
-
             var utcOffset = GetUtcOffset();
 
             string retentionDay = "";
@@ -158,8 +152,7 @@ namespace Geeklab.AudiencelabSDK
                 retentionDay = PlayerPrefs.GetInt("retentionDay").ToString();
             } 
 
-
-            var postData = new
+            var postData = new WebhookRequestData
             {
                 type = type,
                 created_at = currentDateText,
@@ -171,6 +164,7 @@ namespace Geeklab.AudiencelabSDK
                 retention_day = retentionDay,
                 payload = data
             };
+            
             var json = JsonConvert.SerializeObject(postData);
             Debug.Log(json);
             SendRequest(ApiEndpointsModel.WEBHOOK, json, onSuccess, onError);

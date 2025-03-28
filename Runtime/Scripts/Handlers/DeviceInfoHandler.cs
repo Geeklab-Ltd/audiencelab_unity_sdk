@@ -82,7 +82,7 @@ namespace Geeklab.AudiencelabSDK
 #if UNITY_IOS && !UNITY_TVOS
             // deviceGeneration = GetDeviceModel();
             // installedFonts = GetInstalledFonts();
-#elif UNITY_ANDROID
+#elif UNITY_ANDROID && !UNITY_EDITOR
             using (var javaClass = new AndroidJavaClass("com.Geeklab.plugin.DeviceGeneration"))
             {
                 deviceGeneration = javaClass.CallStatic<string>("GetDeviceGeneration");

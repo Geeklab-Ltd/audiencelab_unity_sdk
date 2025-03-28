@@ -1,5 +1,31 @@
 # Changelog
 
+All notable changes to this package will be documented in this file.
+
+The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## [0.9.6] - 2025-03-27
+
+### Fixed
+
+- Fixed empty request body issue on Unity 6.x for iOS platform
+- Improved request serialization consistency across all platforms
+- Added proper serializable classes for all network requests
+- Fixed null reference exceptions in Unity Editor for device info
+- Standardized JSON serialization approach across the SDK
+
+### Changed
+
+- Refactored request models into dedicated classes for better type safety
+- Improved platform-specific handling for device information
+- Enhanced error handling for network requests
+
+### Added
+
+- Added new serializable classes for system info and GPU content
+- Added better support for Unity Editor testing
+
 ## [0.9.53] - 2025-03-10
 
 ### Minor updates

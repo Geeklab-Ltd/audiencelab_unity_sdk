@@ -1,7 +1,7 @@
 {
   "name": "com.geeklab.audiencelab-sdk",
   "displayName": "Audiencelab SDK",
-  "version": "0.9.53",
+  "version": "0.9.6",
   "unity": "2023.1",
   "description": "Audiencelab SDK is a set of utilities for development in Unity. It includes tools for handling deep links, collecting metrics, managing network requests, and much more.",
   "keywords": [
