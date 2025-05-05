@@ -9,7 +9,7 @@ using UnityEngine.Networking;
 namespace Geeklab.AudiencelabSDK
 {
     [CustomEditor(typeof(SDKSettingsModel))]
-    public class SDKSettingsModelEditor : Editor
+    public class SDKSettingsModelEditor : UnityEditor.Editor
     {
         private static SDKSettingsModelEditor _instance;
 
