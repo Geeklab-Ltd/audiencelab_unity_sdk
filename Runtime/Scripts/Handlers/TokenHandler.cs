@@ -36,10 +36,17 @@ namespace Geeklab.AudiencelabSDK
             if (GetCreativeToken() == "")
             {
                 var token = await GetTokenFromGeeklab();
-                    
-                SetToken(token);
-                if (SDKSettingsModel.Instance.ShowDebugLog)
-                    Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Token from Geeklab = {token}");
+                
+                if (token != null)
+                {
+                    SetToken(token);
+                    if (SDKSettingsModel.Instance.ShowDebugLog)
+                        Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Token from Geeklab = {token}");
+                }
+                else
+                {
+                    Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Failed to get token from Geeklab");
+                }
             }
         }
         
@@ -84,6 +91,11 @@ namespace Geeklab.AudiencelabSDK
         public static void SetToken(string newToken)
         {   
             Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Setting token: {newToken}");
+            if (newToken == null)
+            {
+                Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Attempted to set null token");
+                return;
+            }
             creativeToken = newToken.TrimStart('?');
             SaveTokenLocally();
         }
