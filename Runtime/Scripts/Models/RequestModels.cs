@@ -47,6 +47,7 @@ namespace Geeklab.AudiencelabSDK
         public string os_system;
         public string utc_offset;
         public string retention_day;
+        public double total_ads_value;
         public object payload;
     }
 } 

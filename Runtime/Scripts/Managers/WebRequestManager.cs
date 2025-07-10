@@ -162,6 +162,7 @@ namespace Geeklab.AudiencelabSDK
                 os_system = deviceInfo.OsVersion,
                 utc_offset = utcOffset,
                 retention_day = retentionDay,
+                total_ads_value = AdMetrics.TotalAdsValue,
                 payload = data
             };
             
