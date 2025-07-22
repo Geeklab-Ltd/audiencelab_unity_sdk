@@ -149,8 +149,59 @@ AdMetrics.SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true
   "media_source": "string",
   "channel": "string",
   "value": "double",
-  "currency": "string"
+  "currency": "string",
+  "total_ad_views": "int"
 }
+```
+
+### SendAdViewEvent Function
+
+A simplified function for tracking ad view events with automatic cumulative ad view counting. This function automatically increments and includes a `total_ad_views` field that represents the cumulative number of ads viewed since the app was installed.
+
+**Key Features**:
+- **Automatic Counter**: Increments a persistent local counter each time called
+- **Device-Stored**: The cumulative count is stored locally using Unity's PlayerPrefs
+- **Always Included**: Every ad view event automatically includes the `total_ad_views` field
+- **Cross-Session**: The counter persists across app sessions and restarts
+
+**Implementation Steps**:
+
+1. **Call After Ad View**: Execute this function when an ad has been viewed by the user.
+2. **Automatic Increment**: The function automatically increments the total ad views counter.
+3. **Persistent Storage**: The counter is saved locally on the device.
+4. **Include in Event**: The cumulative count is included in the event data sent to the backend.
+
+**Example Usage**:
+
+```csharp
+// Simple ad view tracking
+AudiencelabSDK.SendAdViewEvent("ad_12345", "unity_ads");
+
+// With additional details
+AudiencelabSDK.SendAdViewEvent("ad_67890", "admob", 30, true);
+```
+
+**Generated Event Data**:
+```json
+{
+  "ad_id": "ad_12345",
+  "name": "ad_view",
+  "source": "unity_ads",
+  "watch_time": 0,
+  "reward": false,
+  "total_ad_views": 47
+}
+```
+
+### GetTotalAdViews Function
+
+Retrieve the current cumulative ad views count stored locally on the device.
+
+**Example Usage**:
+
+```csharp
+int totalViews = AudiencelabSDK.GetTotalAdViews();
+Debug.Log($"User has viewed {totalViews} ads in total");
 ```
 
 ## Conclusion

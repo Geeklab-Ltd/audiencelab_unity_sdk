@@ -125,8 +125,32 @@ public class AudiencelabSDK : MonoBehaviour
             return await AdMetrics.SendMetrics(postData, true);
         }
 
+        /// <summary>
+        /// Send a simple ad view event with automatic total_ad_views tracking.
+        /// This method automatically increments and includes the cumulative ad views count.
+        /// </summary>
+        /// <param name="ad_id">Unique identifier for the ad</param>
+        /// <param name="ad_source">Source of the ad (e.g., "unity_ads", "admob")</param>
+        /// <param name="watch_time">Time watched in seconds (optional)</param>
+        /// <param name="reward">Whether this was a rewarded ad</param>
+        public static void SendAdViewEvent(string ad_id, string ad_source, int watch_time = 0, bool reward = false)
+        {
+            if (SDKSettingsModel.Instance == null || !IsConfigFullyEnabled(SDKSettingsModel.Instance.SendStatistics))
+                return;
 
-        
+            AdMetrics.SendAdViewEvent(ad_id, ad_source, watch_time, reward);
+        }
+
+        /// <summary>
+        /// Get the current cumulative total ad views count stored locally on the device.
+        /// </summary>
+        /// <returns>Total number of ad views</returns>
+        public static int GetTotalAdViews()
+        {
+            return AdMetrics.GetTotalAdViews();
+        }
+
+
         private static bool IsConfigFullyEnabled(bool value)
         { 
             if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.IsSDKEnabled 
