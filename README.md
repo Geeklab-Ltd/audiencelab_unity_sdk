@@ -150,35 +150,38 @@ AdMetrics.SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true
   "channel": "string",
   "value": "double",
   "currency": "string",
-  "total_ad_views": "int"
+  "total_ad_value": "double"
 }
 ```
 
 ### SendAdViewEvent Function
 
-A simplified function for tracking ad view events with automatic cumulative ad view counting. This function automatically increments and includes a `total_ad_views` field that represents the cumulative number of ads viewed since the app was installed.
+A simplified function for tracking ad view events with automatic cumulative ad value tracking. This function automatically accumulates and includes a `total_ad_value` field that represents the cumulative value of all ads viewed since the app was installed.
 
 **Key Features**:
-- **Automatic Counter**: Increments a persistent local counter each time called
-- **Device-Stored**: The cumulative count is stored locally using Unity's PlayerPrefs
-- **Always Included**: Every ad view event automatically includes the `total_ad_views` field
-- **Cross-Session**: The counter persists across app sessions and restarts
+- **Automatic Accumulation**: Adds the ad value to a persistent local total each time called
+- **Device-Stored**: The cumulative value is stored locally using Unity's PlayerPrefs
+- **Always Included**: Every ad view event automatically includes the `total_ad_value` field
+- **Cross-Session**: The accumulated value persists across app sessions and restarts
 
 **Implementation Steps**:
 
 1. **Call After Ad View**: Execute this function when an ad has been viewed by the user.
-2. **Automatic Increment**: The function automatically increments the total ad views counter.
-3. **Persistent Storage**: The counter is saved locally on the device.
-4. **Include in Event**: The cumulative count is included in the event data sent to the backend.
+2. **Automatic Accumulation**: The function automatically adds the ad value to the total ad value.
+3. **Persistent Storage**: The accumulated value is saved locally on the device.
+4. **Include in Event**: The cumulative value is included in the event data sent to the backend.
 
 **Example Usage**:
 
 ```csharp
-// Simple ad view tracking
-AudiencelabSDK.SendAdViewEvent("ad_12345", "unity_ads");
+// Simple ad view tracking with value
+AudiencelabSDK.SendAdViewEvent("ad_12345", "unity_ads", 0.05, "USD");
 
 // With additional details
-AudiencelabSDK.SendAdViewEvent("ad_67890", "admob", 30, true);
+AudiencelabSDK.SendAdViewEvent("ad_67890", "admob", 0.08, "USD", 30, true);
+
+// Zero value ad (still tracked in total)
+AudiencelabSDK.SendAdViewEvent("ad_11111", "organic_content", 0.0, "USD");
 ```
 
 **Generated Event Data**:
@@ -189,19 +192,21 @@ AudiencelabSDK.SendAdViewEvent("ad_67890", "admob", 30, true);
   "source": "unity_ads",
   "watch_time": 0,
   "reward": false,
-  "total_ad_views": 47
+  "value": 0.05,
+  "currency": "USD",
+  "total_ad_value": 2.47
 }
 ```
 
-### GetTotalAdViews Function
+### GetTotalAdValue Function
 
-Retrieve the current cumulative ad views count stored locally on the device.
+Retrieve the current cumulative ad value stored locally on the device.
 
 **Example Usage**:
 
 ```csharp
-int totalViews = AudiencelabSDK.GetTotalAdViews();
-Debug.Log($"User has viewed {totalViews} ads in total");
+double totalValue = AudiencelabSDK.GetTotalAdValue();
+Debug.Log($"User has generated ${totalValue:F2} in total ad value");
 ```
 
 ## Conclusion

@@ -126,28 +126,30 @@ public class AudiencelabSDK : MonoBehaviour
         }
 
         /// <summary>
-        /// Send a simple ad view event with automatic total_ad_views tracking.
-        /// This method automatically increments and includes the cumulative ad views count.
+        /// Send a simple ad view event with automatic total_ad_value tracking.
+        /// This method automatically increments and includes the cumulative ad value.
         /// </summary>
         /// <param name="ad_id">Unique identifier for the ad</param>
         /// <param name="ad_source">Source of the ad (e.g., "unity_ads", "admob")</param>
+        /// <param name="value">The value of this ad view (e.g., estimated revenue)</param>
+        /// <param name="currency">Currency of the ad value</param>
         /// <param name="watch_time">Time watched in seconds (optional)</param>
         /// <param name="reward">Whether this was a rewarded ad</param>
-        public static void SendAdViewEvent(string ad_id, string ad_source, int watch_time = 0, bool reward = false)
+        public static void SendAdViewEvent(string ad_id, string ad_source, double value = 0.0, string currency = "USD", int watch_time = 0, bool reward = false)
         {
             if (SDKSettingsModel.Instance == null || !IsConfigFullyEnabled(SDKSettingsModel.Instance.SendStatistics))
                 return;
 
-            AdMetrics.SendAdViewEvent(ad_id, ad_source, watch_time, reward);
+            AdMetrics.SendAdViewEvent(ad_id, ad_source, value, currency, watch_time, reward);
         }
 
         /// <summary>
-        /// Get the current cumulative total ad views count stored locally on the device.
+        /// Get the current cumulative total ad value stored locally on the device.
         /// </summary>
-        /// <returns>Total number of ad views</returns>
-        public static int GetTotalAdViews()
+        /// <returns>Total ad value accumulated</returns>
+        public static double GetTotalAdValue()
         {
-            return AdMetrics.GetTotalAdViews();
+            return AdMetrics.GetTotalAdValue();
         }
 
 

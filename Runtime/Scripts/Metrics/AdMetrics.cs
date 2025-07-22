@@ -15,31 +15,32 @@ namespace Geeklab.AudiencelabSDK
         public bool ShowAdWasCalled { get; set; }
         public bool? IsUnityAdsReady { get; set; }
         
-        // PlayerPrefs key for storing cumulative ad views
-        private const string TOTAL_AD_VIEWS_KEY = "GeeklabSDK_TotalAdViews";
+        // PlayerPrefs key for storing cumulative ad value
+        private const string TOTAL_AD_VALUE_KEY = "GeeklabSDK_TotalAdValue";
 
         /// <summary>
-        /// Gets the cumulative total ad views count from PlayerPrefs
+        /// Gets the cumulative total ad value from PlayerPrefs
         /// </summary>
-        /// <returns>Total ad views count</returns>
-        public static int GetTotalAdViews()
+        /// <returns>Total ad value</returns>
+        public static double GetTotalAdValue()
         {
-            return PlayerPrefs.GetInt(TOTAL_AD_VIEWS_KEY, 0);
+            return (double)PlayerPrefs.GetFloat(TOTAL_AD_VALUE_KEY, 0f);
         }
 
         /// <summary>
-        /// Increments and saves the total ad views count
+        /// Adds to the total ad value and saves it
         /// </summary>
-        /// <returns>New total ad views count</returns>
-        private static int IncrementTotalAdViews()
+        /// <param name="adValue">The value to add to the total</param>
+        /// <returns>New total ad value</returns>
+        private static double AddToTotalAdValue(double adValue)
         {
-            int currentTotal = GetTotalAdViews();
-            int newTotal = currentTotal + 1;
-            PlayerPrefs.SetInt(TOTAL_AD_VIEWS_KEY, newTotal);
+            double currentTotal = GetTotalAdValue();
+            double newTotal = currentTotal + adValue;
+            PlayerPrefs.SetFloat(TOTAL_AD_VALUE_KEY, (float)newTotal);
             PlayerPrefs.Save();
             
             if (SDKSettingsModel.Instance.ShowDebugLog)
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Total ad views incremented to: {newTotal}");
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Total ad value updated by {adValue:F4} to: {newTotal:F4}");
             
             return newTotal;
         }
@@ -52,8 +53,8 @@ namespace Geeklab.AudiencelabSDK
             if (SDKSettingsModel.Instance.ShowDebugLog)
                 Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending custom.Ad event"); 
 
-            // Increment the cumulative ad views counter
-            int totalAdViews = IncrementTotalAdViews();
+            // Add to the cumulative ad value
+            double totalAdValue = AddToTotalAdValue(value);
             
             var data = new {
                 ad_id = ad_id,
@@ -65,20 +66,22 @@ namespace Geeklab.AudiencelabSDK
                 channel = channel,
                 value = value,
                 currency = currency,
-                total_ad_views = totalAdViews
+                total_ad_value = totalAdValue
                 };      
 
             SendMetrics(data, true);
         }
 
         /// <summary>
-        /// Send a generic ad view event with automatic total_ad_views tracking
+        /// Send a generic ad view event with automatic total_ad_value tracking
         /// </summary>
         /// <param name="ad_id">Unique identifier for the ad</param>
         /// <param name="ad_source">Source of the ad (e.g., "unity_ads", "admob")</param>
+        /// <param name="value">The value of this ad view (e.g., estimated revenue)</param>
+        /// <param name="currency">Currency of the ad value</param>
         /// <param name="watch_time">Time watched in seconds (optional)</param>
         /// <param name="reward">Whether this was a rewarded ad</param>
-        public static void SendAdViewEvent(string ad_id, string ad_source, int watch_time = 0, bool reward = false)
+        public static void SendAdViewEvent(string ad_id, string ad_source, double value = 0.0, string currency = "USD", int watch_time = 0, bool reward = false)
         {
             if (!SDKSettingsModel.Instance.IsSDKEnabled) 
                 return;
@@ -86,8 +89,8 @@ namespace Geeklab.AudiencelabSDK
             if (SDKSettingsModel.Instance.ShowDebugLog)
                 Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending ad view event"); 
 
-            // Increment the cumulative ad views counter
-            int totalAdViews = IncrementTotalAdViews();
+            // Add to the cumulative ad value
+            double totalAdValue = AddToTotalAdValue(value);
             
             var data = new {
                 ad_id = ad_id,
@@ -95,7 +98,9 @@ namespace Geeklab.AudiencelabSDK
                 source = ad_source,
                 watch_time = watch_time,
                 reward = reward,
-                total_ad_views = totalAdViews
+                value = value,
+                currency = currency,
+                total_ad_value = totalAdValue
                 };      
 
             SendMetrics(data, true);
