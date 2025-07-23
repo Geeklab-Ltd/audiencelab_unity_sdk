@@ -149,8 +149,64 @@ AdMetrics.SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true
   "media_source": "string",
   "channel": "string",
   "value": "double",
-  "currency": "string"
+  "currency": "string",
+  "total_ad_value": "double"
 }
+```
+
+### SendAdViewEvent Function
+
+A simplified function for tracking ad view events with automatic cumulative ad value tracking. This function automatically accumulates and includes a `total_ad_value` field that represents the cumulative value of all ads viewed since the app was installed.
+
+**Key Features**:
+- **Automatic Accumulation**: Adds the ad value to a persistent local total each time called
+- **Device-Stored**: The cumulative value is stored locally using Unity's PlayerPrefs
+- **Always Included**: Every ad view event automatically includes the `total_ad_value` field
+- **Cross-Session**: The accumulated value persists across app sessions and restarts
+
+**Implementation Steps**:
+
+1. **Call After Ad View**: Execute this function when an ad has been viewed by the user.
+2. **Automatic Accumulation**: The function automatically adds the ad value to the total ad value.
+3. **Persistent Storage**: The accumulated value is saved locally on the device.
+4. **Include in Event**: The cumulative value is included in the event data sent to the backend.
+
+**Example Usage**:
+
+```csharp
+// Simple ad view tracking with value
+AudiencelabSDK.SendAdViewEvent("ad_12345", "unity_ads", 0.05, "USD");
+
+// With additional details
+AudiencelabSDK.SendAdViewEvent("ad_67890", "admob", 0.08, "USD", 30, true);
+
+// Zero value ad (still tracked in total)
+AudiencelabSDK.SendAdViewEvent("ad_11111", "organic_content", 0.0, "USD");
+```
+
+**Generated Event Data**:
+```json
+{
+  "ad_id": "ad_12345",
+  "name": "ad_view",
+  "source": "unity_ads",
+  "watch_time": 0,
+  "reward": false,
+  "value": 0.05,
+  "currency": "USD",
+  "total_ad_value": 2.47
+}
+```
+
+### GetTotalAdValue Function
+
+Retrieve the current cumulative ad value stored locally on the device.
+
+**Example Usage**:
+
+```csharp
+double totalValue = AudiencelabSDK.GetTotalAdValue();
+Debug.Log($"User has generated ${totalValue:F2} in total ad value");
 ```
 
 ## Conclusion
