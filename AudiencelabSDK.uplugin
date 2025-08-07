@@ -1,0 +1,51 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.9.9",
+	"FriendlyName": "Audiencelab SDK",
+	"Description": "Audiencelab SDK for Unreal Engine 5. Provides tools for handling deep links, collecting metrics, managing network requests, and privacy-centric analytics.",
+	"Category": "Analytics",
+	"CreatedBy": "Geeklab",
+	"CreatedByURL": "https://geeklab.app",
+	"DocsURL": "https://github.com/Geeklab-Ltd/audiencelab_unreal_sdk",
+	"MarketplaceURL": "",
+	"SupportURL": "mailto:support@geeklab.app",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "AudiencelabSDK",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Mac",
+				"Linux",
+				"Android",
+				"IOS"
+			]
+		},
+		{
+			"Name": "AudiencelabSDKEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Mac",
+				"Linux"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "HTTP",
+			"Enabled": true
+		},
+		{
+			"Name": "Json",
+			"Enabled": true
+		}
+	]
+}
