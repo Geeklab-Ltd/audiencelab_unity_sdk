@@ -118,7 +118,11 @@ namespace Geeklab.AudiencelabSDK
             {
                 type = "device-metrics",
                 data = postData,
-                created_at = currentDateText
+                created_at = currentDateText,
+                sdk_version = SDKVersion.VERSION,
+                sdk_type = SDKVersion.SDK_TYPE,
+                app_version = SDKVersion.AppVersion,
+                unity_version = SDKVersion.UnityVersion
             };
             
             var json = JsonConvert.SerializeObject(postDataFull);
@@ -162,6 +166,10 @@ namespace Geeklab.AudiencelabSDK
                 os_system = deviceInfo.OsVersion,
                 utc_offset = utcOffset,
                 retention_day = retentionDay,
+                sdk_version = SDKVersion.VERSION,
+                sdk_type = SDKVersion.SDK_TYPE,
+                app_version = SDKVersion.AppVersion,
+                unity_version = SDKVersion.UnityVersion,
                 payload = data
             };
             

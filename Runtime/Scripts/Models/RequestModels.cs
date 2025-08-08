@@ -28,6 +28,10 @@ namespace Geeklab.AudiencelabSDK
         public string type;
         public DeviceMetricsData data;
         public string created_at;
+        public string sdk_version;
+        public string sdk_type;
+        public string app_version;
+        public string unity_version;
     }
 
     [Serializable]
@@ -47,6 +51,10 @@ namespace Geeklab.AudiencelabSDK
         public string os_system;
         public string utc_offset;
         public string retention_day;
+        public string sdk_version;
+        public string sdk_type;
+        public string app_version;
+        public string unity_version;
         public object payload;
     }
 } 
