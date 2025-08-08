@@ -146,15 +146,6 @@ public class AudiencelabSDK : MonoBehaviour
         }
 
         /// <summary>
-        /// Get the app bundle version (iOS) or version code (Android)
-        /// </summary>
-        /// <returns>App bundle version string</returns>
-        public static string GetAppBundleVersion()
-        {
-            return SDKVersion.AppBundleVersion;
-        }
-
-        /// <summary>
         /// Get the SDK version
         /// </summary>
         /// <returns>SDK version string</returns>
