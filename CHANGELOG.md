@@ -5,7 +5,23 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-01-XX
+## [1.0.1] - 2025-08-25
+
+### Added
+
+- Added optional `tr_id` (transaction ID) field to purchase events for better transaction tracking and deduplication
+- The `tr_id` field is now available in both `SendCustomPurchaseEvent` and `SendPurchaseEvent` methods
+
+### Fixed
+
+- Fixed floating-point precision errors in cumulative value tracking for both purchase and ad events
+- Changed storage mechanism from PlayerPrefs.SetFloat/GetFloat to PlayerPrefs.SetString/GetString to maintain full double precision
+- This resolves issues where cumulative values were accumulating rounding errors over multiple events
+- Both `total_purchase_value` and `total_ad_value` now maintain accurate precision across all events
+- Only cumulate total purchase value when the status is completed or success
+- Enhanced number parsing and formatting with culture-invariant culture and robust number styles for international compatibility
+
+## [1.0.0] - 2025-08-XX
 
 ### Added
 
