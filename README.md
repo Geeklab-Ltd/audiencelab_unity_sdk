@@ -109,17 +109,18 @@ This function is used to track custom purchase events within your application.
 **Example Usage**:
 
 ```csharp
-PurchaseMetrics.SendCustomPurchaseEvent("123", "Premium Pack", 0.99, "USD", "Completed");
+PurchaseMetrics.SendCustomPurchaseEvent("123", "Premium Pack", 0.99, "USD", "Completed", "txn_abc123");
 ```
 
 ```json
 {
-  "item_id": "string",
-  "item_name": "string",
-  "value": "double",
-  "currency": "string",
-  "status": "string",
-  "total_purchase_value": "double"
+	"item_id": "string",
+	"item_name": "string",
+	"value": "double",
+	"currency": "string",
+	"status": "string",
+	"total_purchase_value": "double",
+	"tr_id": "string"
 }
 ```
 
@@ -142,22 +143,22 @@ AdMetrics.SendCustomAdEvent("ad_001", "Interstitial Ad 1", "GoogleAds", 30, true
 
 ```json
 {
-  "ad_id": "string",
-  "name": "string",
-  "source": "string",
-  "watch_time": "int",
-  "reward": "bool",
-  "media_source": "string",
-  "channel": "string",
-  "value": "double",
-  "currency": "string",
-  "total_ad_value": "double"
+	"ad_id": "string",
+	"name": "string",
+	"source": "string",
+	"watch_time": "int",
+	"reward": "bool",
+	"media_source": "string",
+	"channel": "string",
+	"value": "double",
+	"currency": "string",
+	"total_ad_value": "double"
 }
 ```
 
 ### GetTotalAdValue Function
 
-Retrieve the current cumulative ad value stored locally on the device.
+Retrieve the current cumulative ad value stored locally on the device. The value is stored with full precision to avoid floating-point rounding errors that could accumulate over multiple ad events.
 
 **Example Usage**:
 
@@ -168,7 +169,7 @@ Debug.Log($"User has generated ${totalValue:F2} in total ad value");
 
 ### GetTotalPurchaseValue Function
 
-Retrieve the current cumulative purchase value stored locally on the device.
+Retrieve the current cumulative purchase value stored locally on the device. The value is stored with full precision to avoid floating-point rounding errors that could accumulate over multiple purchase events.
 
 **Example Usage**:
 

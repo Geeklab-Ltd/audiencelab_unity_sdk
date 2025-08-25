@@ -24,7 +24,12 @@ namespace Geeklab.AudiencelabSDK
         /// <returns>Total ad value</returns>
         public static double GetTotalAdValue()
         {
-            return (double)PlayerPrefs.GetFloat(TOTAL_AD_VALUE_KEY, 0f);
+            string storedValue = PlayerPrefs.GetString(TOTAL_AD_VALUE_KEY, "0");
+            if (double.TryParse(storedValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double result))
+            {
+                return result;
+            }
+            return 0.0;
         }
 
         /// <summary>
@@ -36,11 +41,11 @@ namespace Geeklab.AudiencelabSDK
         {
             double currentTotal = GetTotalAdValue();
             double newTotal = currentTotal + adValue;
-            PlayerPrefs.SetFloat(TOTAL_AD_VALUE_KEY, (float)newTotal);
+            PlayerPrefs.SetString(TOTAL_AD_VALUE_KEY, newTotal.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
             PlayerPrefs.Save();
             
             if (SDKSettingsModel.Instance.ShowDebugLog)
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Total ad value updated by {adValue:F4} to: {newTotal:F4}");
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Total ad value updated by {adValue} to: {newTotal}");
             
             return newTotal;
         }

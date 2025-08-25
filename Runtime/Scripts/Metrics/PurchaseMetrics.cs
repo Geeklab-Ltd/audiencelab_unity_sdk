@@ -20,7 +20,12 @@ namespace Geeklab.AudiencelabSDK
         /// <returns>Total purchase value</returns>
         public static double GetTotalPurchaseValue()
         {
-            return (double)PlayerPrefs.GetFloat(TOTAL_PURCHASE_VALUE_KEY, 0f);
+            string storedValue = PlayerPrefs.GetString(TOTAL_PURCHASE_VALUE_KEY, "0");
+            if (double.TryParse(storedValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double result))
+            {
+                return result;
+            }
+            return 0.0;
         }
 
         /// <summary>
@@ -32,16 +37,16 @@ namespace Geeklab.AudiencelabSDK
         {
             double currentTotal = GetTotalPurchaseValue();
             double newTotal = currentTotal + purchaseValue;
-            PlayerPrefs.SetFloat(TOTAL_PURCHASE_VALUE_KEY, (float)newTotal);
+            PlayerPrefs.SetString(TOTAL_PURCHASE_VALUE_KEY, newTotal.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
             PlayerPrefs.Save();
             
             if (SDKSettingsModel.Instance.ShowDebugLog)
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Total purchase value updated by {purchaseValue:F4} to: {newTotal:F4}");
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Total purchase value updated by {purchaseValue} to: {newTotal}");
             
             return newTotal;
         }
 
-        public static void SendCustomPurchaseEvent(string id, string name, double value, string currency, string status)
+        public static void SendCustomPurchaseEvent(string id, string name, double value, string currency, string status, string tr_id = null)
         {
             if (!IsConfigFullyEnabled())
                 return;
@@ -53,8 +58,14 @@ namespace Geeklab.AudiencelabSDK
             valueOfPurchase = value;
             token = SDKSettingsModel.Instance.Token;
 
-            // Add to the cumulative purchase value
-            double totalPurchaseValue = AddToTotalPurchaseValue(value);
+            // Add to the cumulative purchase value if status is Completed
+            if (!string.IsNullOrEmpty(status) && (status.ToLower() == "completed" || status.ToLower() == "success"))
+                AddToTotalPurchaseValue(value);
+            else
+                if (SDKSettingsModel.Instance.ShowDebugLog)
+                    Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Purchase event status is not Completed");
+
+            double totalPurchaseValue = GetTotalPurchaseValue();
 
             var data = new {
                 item_id = idOfPurchasedItem,
@@ -62,7 +73,8 @@ namespace Geeklab.AudiencelabSDK
                 value = valueOfPurchase,
                 currency = currency,
                 status = status,
-                total_purchase_value = totalPurchaseValue
+                total_purchase_value = totalPurchaseValue,
+                tr_id = tr_id
                 };
 
             SendPurchaseMetrics(data, true);
@@ -76,7 +88,8 @@ namespace Geeklab.AudiencelabSDK
         /// <param name="value">The value of this purchase</param>
         /// <param name="currency">Currency of the purchase value</param>
         /// <param name="status">Status of the purchase (e.g., "Completed", "Failed")</param>
-        public static void SendPurchaseEvent(string item_id, string item_name, double value, string currency = "USD", string status = "Completed")
+        /// <param name="tr_id">Optional transaction ID for the purchase</param>
+        public static void SendPurchaseEvent(string item_id, string item_name, double value, string currency = "USD", string status = "Completed", string tr_id = null)
         {
             if (!IsConfigFullyEnabled())
                 return;
@@ -84,8 +97,14 @@ namespace Geeklab.AudiencelabSDK
             if (SDKSettingsModel.Instance.ShowDebugLog)
                 Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending purchase event"); 
 
-            // Add to the cumulative purchase value
-            double totalPurchaseValue = AddToTotalPurchaseValue(value);
+            // Add to the cumulative purchase value if status is Completed
+            if (!string.IsNullOrEmpty(status) && (status.ToLower() == "completed" || status.ToLower() == "success"))
+                AddToTotalPurchaseValue(value);
+            else
+                if (SDKSettingsModel.Instance.ShowDebugLog)
+                    Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Purchase event status is not Completed");
+
+            double totalPurchaseValue = GetTotalPurchaseValue();
 
             var data = new {
                 item_id = item_id,
@@ -93,7 +112,8 @@ namespace Geeklab.AudiencelabSDK
                 value = value,
                 currency = currency,
                 status = status,
-                total_purchase_value = totalPurchaseValue
+                total_purchase_value = totalPurchaseValue,
+                tr_id = tr_id
                 };
 
             SendPurchaseMetrics(data, false);
