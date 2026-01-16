@@ -5,6 +5,39 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-22
+
+### Added
+
+- Event de-duplication fields: `event_id` and optional `dedupe_key` on all webhook requests
+- Identity collection: iOS IDFV, Android GAID/App Set ID (+ optional Android ID fallback)
+- Session tracking with `session` events and session identifiers
+- User properties (whitelisted/blacklisted) persisted in PlayerPrefs and attached to all requests
+- Public `AudiencelabSDK.SendCustomEvent` API for custom events
+- Identity settle window (2s) for creative token fetching and session start events when GAID is enabled
+- Optional Debug Overlay (Editor/Development only) for request status and recent events
+- Token fetch retry loop with exponential backoff (max 10 retries, 5 minute cap)
+- Webhook event queue with file persistence for offline or missing-token scenarios
+- Automatic queue flush when token becomes available or connectivity is restored
+- `AudiencelabSDK.SendAdEvent()` and `AudiencelabSDK.SendPurchaseEvent()` convenience methods
+- Reserved property keys (starting with `_`) for backend-only use; developers cannot set or unset these
+- Enhanced debug overlay with token status, last fetch attempt time, and request envelope snapshot
+- Connectivity monitoring to reset retry counts and flush queued events when back online
+
+### Changed
+
+- Fetch-token request now includes identity and user properties
+- Token response can return whitelisted properties which are merged locally
+- `retention_day` sent as `int?` instead of string in webhook payloads
+- Editor settings UI reorganized into tabs (Main, Privacy, Debug)
+- Deprecated direct `AdMetrics` and `PurchaseMetrics` method calls in favor of `AudiencelabSDK` methods
+
+### Fixed
+
+- Fixed iOS build errors caused by `DllImport` declarations incorrectly placed inside method bodies
+- Fixed Android/iOS native code attempting to compile in Editor by adding `!UNITY_EDITOR` guards
+- Removed unused Unity Ads and Unity Purchasing assembly references that could cause build issues
+
 ## [1.0.1] - 2025-08-25
 
 ### Added

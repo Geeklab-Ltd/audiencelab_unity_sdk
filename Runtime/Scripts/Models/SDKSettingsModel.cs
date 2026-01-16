@@ -53,6 +53,9 @@ namespace Geeklab.AudiencelabSDK
 
         [DisableIfSDKDisabled] [FieldGroup("Main Settings")]
         public bool ShowDebugLog = true;
+
+        [FieldGroup("Privacy Settings")] [Header("Privacy Settings")]
+        public bool EnableGaidCollection = true;
         
         [DisableIfSDKDisabled]
         private static string PrefixDebugLog = $"<color=#668cff>AudiencelabSDK</color> <color=#666666>=></color>";

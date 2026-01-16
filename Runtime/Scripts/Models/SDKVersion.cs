@@ -10,7 +10,7 @@ namespace Geeklab.AudiencelabSDK
         /// <summary>
         /// Current SDK version - should match package.json version
         /// </summary>
-        public const string VERSION = "1.0.0";
+        public const string VERSION = "1.1.0";
         
         /// <summary>
         /// SDK type identifier

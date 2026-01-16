@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Geeklab.AudiencelabSDK
 {
@@ -32,6 +34,20 @@ namespace Geeklab.AudiencelabSDK
         public string sdk_type;
         public string app_version;
         public string unity_version;
+        [JsonProperty("ifv")]
+        public string idfv;
+        [JsonProperty("ga")]
+        public string gaid;
+        [JsonProperty("asid")]
+        public string app_set_id;
+        [JsonProperty("aid")]
+        public string android_id;
+        [JsonProperty("lat")]
+        public bool? limit_ad_tracking;
+        [JsonProperty("wp")]
+        public Dictionary<string, object> whitelisted_properties;
+        [JsonProperty("bp")]
+        public Dictionary<string, object> blacklisted_properties;
     }
 
     [Serializable]
@@ -44,17 +60,35 @@ namespace Geeklab.AudiencelabSDK
     public class WebhookRequestData
     {
         public string type;
+        [JsonProperty("eid")]
+        public string event_id;
+        [JsonProperty("dk")]
+        public string dedupe_key;
         public string created_at;
         public string creativeToken;
         public string device_name;
         public string device_model;
         public string os_system;
         public string utc_offset;
-        public string retention_day;
+        public int? retention_day;
         public string sdk_version;
         public string sdk_type;
         public string app_version;
         public string unity_version;
+        [JsonProperty("ifv")]
+        public string idfv;
+        [JsonProperty("ga")]
+        public string gaid;
+        [JsonProperty("asid")]
+        public string app_set_id;
+        [JsonProperty("aid")]
+        public string android_id;
+        [JsonProperty("lat")]
+        public bool? limit_ad_tracking;
+        [JsonProperty("wp")]
+        public Dictionary<string, object> whitelisted_properties;
+        [JsonProperty("bp")]
+        public Dictionary<string, object> blacklisted_properties;
         public object payload;
     }
 } 

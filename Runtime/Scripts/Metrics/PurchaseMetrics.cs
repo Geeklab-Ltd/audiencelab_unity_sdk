@@ -46,6 +46,7 @@ namespace Geeklab.AudiencelabSDK
             return newTotal;
         }
 
+        [Obsolete("Use AudiencelabSDK.SendPurchaseEvent(...) instead.")]
         public static void SendCustomPurchaseEvent(string id, string name, double value, string currency, string status, string tr_id = null)
         {
             if (!IsConfigFullyEnabled())
@@ -77,7 +78,7 @@ namespace Geeklab.AudiencelabSDK
                 tr_id = tr_id
                 };
 
-            SendPurchaseMetrics(data, true);
+            SendPurchaseMetrics(data, true, tr_id);
         }
 
         /// <summary>
@@ -89,6 +90,7 @@ namespace Geeklab.AudiencelabSDK
         /// <param name="currency">Currency of the purchase value</param>
         /// <param name="status">Status of the purchase (e.g., "Completed", "Failed")</param>
         /// <param name="tr_id">Optional transaction ID for the purchase</param>
+        [Obsolete("Use AudiencelabSDK.SendPurchaseEvent(...) instead.")]
         public static void SendPurchaseEvent(string item_id, string item_name, double value, string currency = "USD", string status = "Completed", string tr_id = null)
         {
             if (!IsConfigFullyEnabled())
@@ -116,7 +118,7 @@ namespace Geeklab.AudiencelabSDK
                 tr_id = tr_id
                 };
 
-            SendPurchaseMetrics(data, false);
+            SendPurchaseMetrics(data, false, tr_id);
         }
 
         private static string token;
@@ -145,14 +147,14 @@ namespace Geeklab.AudiencelabSDK
             return false;
         }
 
-        public static async Task<bool> SendPurchaseMetrics(object postData = null, bool isCustom = false)
+        public static async Task<bool> SendPurchaseMetrics(object postData = null, bool isCustom = false, string dedupeKey = null)
         {
             if (!IsConfigFullyEnabled())
                 return false;
             
             var taskCompletionSource = new TaskCompletionSource<bool>();
 
-            WebRequestManager.Instance.SendPurchaseMetricsRequest(postData, isCustom, s =>
+            WebRequestManager.Instance.SendPurchaseMetricsRequest(postData, isCustom, dedupeKey, s =>
             {
                 if (SDKSettingsModel.Instance.ShowDebugLog)
                     Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} {s}");

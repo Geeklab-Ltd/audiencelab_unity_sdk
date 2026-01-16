@@ -1,22 +1,19 @@
 {
-    "name": "geeklab.audiencelab-sdk",
+    "name": "geeklab.audiencelab-sdk.Tests",
     "rootNamespace": "",
     "references": [
-        "Unity.Services.Core"
+        "geeklab.audiencelab-sdk"
     ],
     "includePlatforms": [
-        "Android",
-        "Editor",
-        "iOS"
+        "Editor"
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [
-        "Newtonsoft.Json.dll"
+        "nunit.framework.dll"
     ],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
     "noEngineReferences": false
 }

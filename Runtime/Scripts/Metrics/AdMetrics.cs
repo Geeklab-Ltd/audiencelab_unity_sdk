@@ -50,7 +50,8 @@ namespace Geeklab.AudiencelabSDK
             return newTotal;
         }
 
-        public static void SendCustomAdEvent(string ad_id, string name, string source, int watch_time, bool reward, string media_source, string channel, double value, string currency)
+        [Obsolete("Use AudiencelabSDK.SendAdEvent(...) instead.")]
+        public static void SendCustomAdEvent(string ad_id, string name, string source, int watch_time, bool reward, string media_source, string channel, double value, string currency, string dedupeKey = null)
         {
             if (!SDKSettingsModel.Instance.IsSDKEnabled) 
                 return;
@@ -74,17 +75,17 @@ namespace Geeklab.AudiencelabSDK
                 total_ad_value = totalAdValue
                 };      
 
-            SendMetrics(data, true);
+            SendMetrics(data, true, dedupeKey);
         }
 
-          public static async Task<bool> SendMetrics(object postData = null, bool isCustom = false)
+        public static async Task<bool> SendMetrics(object postData = null, bool isCustom = false, string dedupeKey = null)
         {
             if (!SDKSettingsModel.Instance.SendStatistics) 
                 return false;
             
             var taskCompletionSource = new TaskCompletionSource<bool>();
 
-            WebRequestManager.Instance.SendAdEventRequest(postData, isCustom, s =>
+            WebRequestManager.Instance.SendAdEventRequest(postData, isCustom, dedupeKey, s =>
             {
                 if (SDKSettingsModel.Instance.ShowDebugLog)
                     Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} {s}");

@@ -6,6 +6,8 @@ using UnityEngine;
 
 public class AudiencelabSDK : MonoBehaviour
     {
+        private const string ManualGaidKey = "GeeklabSDK_ManualGAID";
+        private const string ManualAppSetIdKey = "GeeklabSDK_ManualAppSetId";
         private bool showServiceInHierarchy;
 
         private static AudiencelabSDK instance;
@@ -125,6 +127,17 @@ public class AudiencelabSDK : MonoBehaviour
             return await AdMetrics.SendMetrics(postData, true);
         }
 
+        /// <summary>
+        /// Send a custom event with arbitrary properties.
+        /// </summary>
+        public static async Task<bool?> SendCustomEvent(string eventName, object properties = null, string dedupeKey = null)
+        {
+            if (SDKSettingsModel.Instance == null || !IsConfigFullyEnabled(SDKSettingsModel.Instance.SendStatistics))
+                return false;
+
+            return await CustomMetrics.SendCustomEvent(eventName, properties, dedupeKey);
+        }
+
 
 
         /// <summary>
@@ -161,6 +174,144 @@ public class AudiencelabSDK : MonoBehaviour
         public static string GetUnityVersion()
         {
             return SDKVersion.UnityVersion;
+        }
+
+        /// <summary>
+        /// Set a user property that will be attached to all requests.
+        /// </summary>
+        public static void SetUserProperty(string key, object value, bool blacklisted = false)
+        {
+            UserPropertiesManager.SetUserProperty(key, value, blacklisted);
+        }
+
+        /// <summary>
+        /// Remove a user property.
+        /// </summary>
+        public static void UnsetUserProperty(string key, bool blacklisted = false)
+        {
+            UserPropertiesManager.UnsetUserProperty(key, blacklisted);
+        }
+
+        /// <summary>
+        /// Clear all user properties.
+        /// </summary>
+        public static void ClearUserProperties(bool includeBlacklisted = false)
+        {
+            UserPropertiesManager.ClearUserProperties(includeBlacklisted);
+        }
+
+        /// <summary>
+        /// Send an ad event triggered directly by the developer.
+        /// </summary>
+        public static void SendAdEvent(string ad_id, string name, string source, int watch_time, bool reward,
+            string media_source, string channel, double value, string currency, string dedupeKey = null)
+        {
+            AdMetrics.SendCustomAdEvent(ad_id, name, source, watch_time, reward, media_source, channel, value, currency, dedupeKey);
+        }
+
+        /// <summary>
+        /// Send a purchase event (preferred API).
+        /// </summary>
+        /// 
+        public static void SendPurchaseEvent(string id, string name, double value, string currency, string status, string tr_id = null)
+        {
+            PurchaseMetrics.SendCustomPurchaseEvent(id, name, value, currency, status, tr_id);
+        }
+
+
+        /// <summary>
+        /// Manually set GAID (Advertising ID) for Android when using manual mode.
+        /// </summary>
+        public static void SetAdvertisingId(string gaid)
+        {
+            var normalized = NormalizeAdvertisingId(gaid);
+            if (string.IsNullOrEmpty(normalized) || IsAllZeroAdvertisingId(normalized))
+            {
+                return;
+            }
+
+            PlayerPrefs.SetString(ManualGaidKey, normalized);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Clear the manual GAID override.
+        /// </summary>
+        public static void ClearAdvertisingId()
+        {
+            PlayerPrefs.DeleteKey(ManualGaidKey);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Manually set App Set ID for Android when using manual mode.
+        /// </summary>
+        public static void SetAppSetId(string appSetId)
+        {
+            var normalized = string.IsNullOrEmpty(appSetId) ? null : appSetId.Trim();
+            if (string.IsNullOrEmpty(normalized))
+            {
+                return;
+            }
+
+            PlayerPrefs.SetString(ManualAppSetIdKey, normalized);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Clear the manual App Set ID override.
+        /// </summary>
+        public static void ClearAppSetId()
+        {
+            PlayerPrefs.DeleteKey(ManualAppSetIdKey);
+            PlayerPrefs.Save();
+        }
+
+        internal static string GetManualAdvertisingId()
+        {
+            var value = PlayerPrefs.GetString(ManualGaidKey, "");
+            value = NormalizeAdvertisingId(value);
+            if (string.IsNullOrEmpty(value) || IsAllZeroAdvertisingId(value))
+            {
+                return null;
+            }
+
+            return value;
+        }
+
+        internal static string GetManualAppSetId()
+        {
+            var value = PlayerPrefs.GetString(ManualAppSetIdKey, "");
+            return string.IsNullOrEmpty(value) ? null : value.Trim();
+        }
+
+        private static string NormalizeAdvertisingId(string gaid)
+        {
+            return string.IsNullOrEmpty(gaid) ? null : gaid.Trim();
+        }
+
+        private static bool IsAllZeroAdvertisingId(string gaid)
+        {
+            if (string.IsNullOrEmpty(gaid))
+            {
+                return true;
+            }
+
+            var raw = gaid.Replace("-", "");
+            if (raw.Length == 0)
+            {
+                return true;
+            }
+
+            foreach (var ch in raw)
+            {
+                if (ch != '0')
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
 

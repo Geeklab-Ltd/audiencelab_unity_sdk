@@ -8,51 +8,65 @@ namespace Geeklab.AudiencelabSDK
 {
     public class UserMetrics : MonoBehaviour
     {
-        private static float sessionTime;
-        private static int timesTriedToFetchToken = 0;
-
-        
-        
         private void Start()
         {
+            // Initialize firstLogin and calculate retentionDay early (doesn't require token)
+            // This ensures retentionDay is available for any events that get queued before token arrives
+            if (string.IsNullOrEmpty(PlayerPrefs.GetString("firstLogin")))
+            {
+                InitializeFirstLogin();
+            }
+            EnsureRetentionDayCalculated();
 
-            timesTriedToFetchToken++;
-
-
-            if (PlayerPrefs.GetString("GeeklabCreativeToken") == "" || PlayerPrefs.GetString("GeeklabCreativeToken") == null)
-            {   
-                Debug.Log("Waiting for creative token");
-                if (timesTriedToFetchToken < 31){
-                    Invoke("Start", 2);
-                } else {   
-                    TokenHandler.SetToken("BIN");
-                    Debug.Log("Creative token not found");
-                }
+            // Check if token already exists
+            if (TokenHandler.HasValidToken())
+            {
+                Debug.Log("Creative token found");
+                UpdateRetention();
             }
             else
             {
-                Debug.Log("Creative token found");
-                sessionTime = 0.0f;
-                if (PlayerPrefs.GetString("firstLogin") == "")
-                {
-                    InitializeFirstLogin(); 
-
-                }
-
-                // set last login
-                UpdateRetention();
-
+                // Subscribe to token available event instead of polling
+                TokenHandler.OnTokenAvailable += HandleTokenAvailable;
             }
-
         }
 
-        private void Update()
+        private void OnDestroy()
         {
-            // Update session time
-            sessionTime += Time.deltaTime;
+            TokenHandler.OnTokenAvailable -= HandleTokenAvailable;
         }
 
+        private void HandleTokenAvailable(string token)
+        {
+            TokenHandler.OnTokenAvailable -= HandleTokenAvailable;
+            Debug.Log("Creative token now available");
+            UpdateRetention();
+        }
 
+        /// <summary>
+        /// Calculate and store retentionDay in PlayerPrefs without sending metrics.
+        /// This can run before the token is available.
+        /// </summary>
+        private static void EnsureRetentionDayCalculated()
+        {
+            var firstLogin = PlayerPrefs.GetString("firstLogin");
+            if (string.IsNullOrEmpty(firstLogin))
+                return;
+
+            try
+            {
+                var today = DateTime.Now.ToString("dd/MM/yyyy");
+                var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
+                var todayDate = DateTime.ParseExact(today, "dd/MM/yyyy", null);
+                var daysBetween = (todayDate - firstLoginDate).Days;
+                PlayerPrefs.SetInt("retentionDay", daysBetween);
+                PlayerPrefs.Save();
+            }
+            catch (Exception)
+            {
+                // Ignore parsing errors - retentionDay will remain unset
+            }
+        }
 
 
         public static void InitializeFirstLogin()

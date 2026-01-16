@@ -32,16 +32,6 @@ namespace Geeklab.AudiencelabSDK
         }
 
 
-#if UNITY_IOS
-        // [DllImport("__Internal")]
-        // static extern string GetDeviceModel();
-
-        // [DllImport("__Internal")]
-        // static extern string GetInstalledFonts();
-        
-#endif
-
-
         private void Start()
         {
             sessionStartTime = DateTimeOffset.UtcNow;
@@ -52,9 +42,7 @@ namespace Geeklab.AudiencelabSDK
             if (isPaused)
             {
                 sessionDuration = DateTimeOffset.UtcNow - sessionStartTime;
-// #pragma warning disable CS4014
-//                 SendDeviceInfo();
-// #pragma warning restore CS4014
+
             }
             else
             {
@@ -66,9 +54,7 @@ namespace Geeklab.AudiencelabSDK
         {
             sessionDuration = DateTime.UtcNow - sessionStartTime;
             
-// #pragma warning disable CS4014
-//             SendDeviceInfo();
-// #pragma warning restore CS4014
+
         }
 
 
@@ -77,64 +63,15 @@ namespace Geeklab.AudiencelabSDK
             var deviceGeneration = deviceModel.GetDeviceModel();
             var installedFonts = deviceModel.GetInstalledFonts();
 
-        
-            
-#if UNITY_IOS && !UNITY_TVOS
-            // deviceGeneration = GetDeviceModel();
-            // installedFonts = GetInstalledFonts();
-#elif UNITY_ANDROID && !UNITY_EDITOR
-            using (var javaClass = new AndroidJavaClass("com.Geeklab.plugin.DeviceGeneration"))
-            {
-                deviceGeneration = javaClass.CallStatic<string>("GetDeviceGeneration");
-            }
-            using (var javaClass = new AndroidJavaClass("com.Geeklab.plugin.InstalledFonts"))
-            {
-                installedFonts = javaClass.CallStatic<string>("GetInstalledFonts");
-            }
-#endif
-
             int nativeWidth;
             int nativeHeight;
 
-#if UNITY_IOS && !UNITY_EDITOR
-
-    [DllImport("__Internal")]
-    static extern IntPtr _GetNativeScreenWidth();
-
-    [DllImport("__Internal")]
-    static extern IntPtr _GetNativeScreenHeight();
-
-     try
-    {
-        string nativeWidthString = Marshal.PtrToStringAnsi(_GetNativeScreenWidth());
-        string nativeHeightString = Marshal.PtrToStringAnsi(_GetNativeScreenHeight());
-
-        if (!string.IsNullOrEmpty(nativeWidthString) && !string.IsNullOrEmpty(nativeHeightString) &&
-            float.TryParse(nativeWidthString, out float width) && 
-            float.TryParse(nativeHeightString, out float height))
-        {
-            nativeWidth = Mathf.RoundToInt(width);
-            nativeHeight = Mathf.RoundToInt(height);
-        }
-        else
-        {
-            // Fallback to Screen resolution if parsing fails
-            nativeWidth = Screen.currentResolution.width;
-            nativeHeight = Screen.currentResolution.height;
-            Debug.LogWarning("Failed to get native resolution, using Screen.currentResolution as fallback");
-        }
-    }
-    catch (Exception e)
-    {
-        // Fallback to Screen resolution if any error occurs
-        nativeWidth = Screen.currentResolution.width;
-        nativeHeight = Screen.currentResolution.height;
-        Debug.LogError($"Error getting native resolution: {e.Message}. Using Screen.currentResolution as fallback");
-    }
+#if UNITY_IOS && !UNITY_TVOS && !UNITY_EDITOR
+            IOSDeviceModel.GetNativeResolution(out nativeWidth, out nativeHeight);
 #else
-    // Use Screen.currentResolution as fallback
-    nativeWidth = Screen.width;
-    nativeHeight = Screen.height;
+            // Use Screen dimensions as fallback for Editor, Android, and other platforms
+            nativeWidth = Screen.width;
+            nativeHeight = Screen.height;
 #endif
             
             var installedFontsArray = installedFonts.Split(',');
@@ -232,13 +169,19 @@ namespace Geeklab.AudiencelabSDK
         }
     }
 
-#if UNITY_IOS && !UNITY_TVOS
+#if UNITY_IOS && !UNITY_TVOS && !UNITY_EDITOR
     class IOSDeviceModel : IDeviceModel {
         [DllImport("__Internal")]
         static extern string _GetDeviceModel();
 
         [DllImport("__Internal")]
         static extern string _GetInstalledFonts();
+
+        [DllImport("__Internal")]
+        static extern IntPtr _GetNativeScreenWidth();
+
+        [DllImport("__Internal")]
+        static extern IntPtr _GetNativeScreenHeight();
 
         public string GetDeviceModel() {
             return _GetDeviceModel();
@@ -247,10 +190,31 @@ namespace Geeklab.AudiencelabSDK
         public string GetInstalledFonts() {
             return _GetInstalledFonts();
         }
+
+        public static void GetNativeResolution(out int width, out int height) {
+            try {
+                string nativeWidthString = Marshal.PtrToStringAnsi(_GetNativeScreenWidth());
+                string nativeHeightString = Marshal.PtrToStringAnsi(_GetNativeScreenHeight());
+
+                if (!string.IsNullOrEmpty(nativeWidthString) && !string.IsNullOrEmpty(nativeHeightString) &&
+                    float.TryParse(nativeWidthString, out float w) && 
+                    float.TryParse(nativeHeightString, out float h))
+                {
+                    width = Mathf.RoundToInt(w);
+                    height = Mathf.RoundToInt(h);
+                    return;
+                }
+            }
+            catch (Exception e) {
+                Debug.LogError($"Error getting native resolution: {e.Message}. Using Screen.currentResolution as fallback");
+            }
+            width = Screen.currentResolution.width;
+            height = Screen.currentResolution.height;
+        }
     }
 #endif
 
-#if UNITY_ANDROID
+#if UNITY_ANDROID && !UNITY_EDITOR
     class AndroidDeviceModel : IDeviceModel {
         public string GetDeviceModel() {
             using (var javaClass = new AndroidJavaClass("com.Geeklab.plugin.DeviceGeneration")) {
