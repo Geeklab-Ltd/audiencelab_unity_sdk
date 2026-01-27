@@ -199,6 +199,7 @@ namespace Geeklab.AudiencelabSDK
                 sdk_type = SDKVersion.SDK_TYPE,
                 app_version = SDKVersion.AppVersion,
                 unity_version = SDKVersion.UnityVersion,
+                dev = Application.isEditor || Debug.isDebugBuild,
                 idfv = identityInfo.idfv,
                 gaid = identityInfo.gaid,
                 app_set_id = identityInfo.app_set_id,
@@ -303,6 +304,7 @@ namespace Geeklab.AudiencelabSDK
                 sdk_type = SDKVersion.SDK_TYPE,
                 app_version = SDKVersion.AppVersion,
                 unity_version = SDKVersion.UnityVersion,
+                dev = Application.isEditor || Debug.isDebugBuild,
                 idfv = identityInfo.idfv,
                 gaid = identityInfo.gaid,
                 app_set_id = identityInfo.app_set_id,
@@ -341,13 +343,13 @@ namespace Geeklab.AudiencelabSDK
             }
 
             var settings = AudienceLabSettings.Instance;
-            var manualMode = settings != null && settings.enableGaidManualMode;
             var autoMode = settings != null
                 ? settings.enableGaidAutoCollection
                 : (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.EnableGaidCollection);
             var appSetAuto = settings == null || settings.enableAppSetIdAutoCollection;
 
-            var wantsAndroidIdentity = manualMode || autoMode || appSetAuto;
+            // Only wait for identity if auto-collecting GAID or App Set ID
+            var wantsAndroidIdentity = autoMode || appSetAuto;
             var wantsIosIdentity = Application.platform == RuntimePlatform.IPhonePlayer;
             var wantsIdentity = wantsAndroidIdentity || wantsIosIdentity;
 

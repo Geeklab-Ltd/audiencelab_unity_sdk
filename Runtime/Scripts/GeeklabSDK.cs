@@ -206,16 +206,15 @@ public class AudiencelabSDK : MonoBehaviour
         public static void SendAdEvent(string ad_id, string name, string source, int watch_time, bool reward,
             string media_source, string channel, double value, string currency, string dedupeKey = null)
         {
-            AdMetrics.SendCustomAdEvent(ad_id, name, source, watch_time, reward, media_source, channel, value, currency, dedupeKey);
+            Geeklab.AudiencelabSDK.AdMetrics.SendAdEventInternal(ad_id, name, source, watch_time, reward, media_source, channel, value, currency, dedupeKey);
         }
 
         /// <summary>
         /// Send a purchase event (preferred API).
         /// </summary>
-        /// 
         public static void SendPurchaseEvent(string id, string name, double value, string currency, string status, string tr_id = null)
         {
-            PurchaseMetrics.SendCustomPurchaseEvent(id, name, value, currency, status, tr_id);
+            Geeklab.AudiencelabSDK.PurchaseMetrics.SendPurchaseEventInternal(id, name, value, currency, status, tr_id);
         }
 
 

@@ -113,7 +113,7 @@ namespace Geeklab.AudiencelabSDK
             };
         
             PlayerPrefs.SetString("lastSentMetricDate", today);
-            SendMetrics(data);
+            _ = SendMetrics(data);
         }
         
         

@@ -5,6 +5,27 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-01-27
+
+### Added
+
+- Android build preprocessor that automatically manages Play Services dependencies based on SDK settings
+- New menu items: "Audiencelab SDK > Regenerate Android Dependencies" and "Check Android Dependencies"
+- Conditional dependency inclusion: Play Services dependencies only added when Auto GAID or App Set ID auto-collection is enabled
+- `dev` flag on all events to distinguish development/debug builds from production (true when Editor or Development Build)
+
+### Changed
+
+- Android dependencies are now generated at build time instead of being bundled with the SDK
+- Updated Editor validation to reflect automatic dependency generation
+- Improved setup instructions in SDK settings window
+- Merged "Manual GAID" and "Disabled" modes into single "Disabled" option (manual SetAdvertisingId() works regardless of mode)
+- App Set ID auto-collection checkbox now always editable to allow disabling Play Services dependencies
+
+### Fixed
+
+- Removed unnecessary BILLING permission from AndroidManifest.xml
+
 ## [1.1.0] - 2026-01-22
 
 ### Added

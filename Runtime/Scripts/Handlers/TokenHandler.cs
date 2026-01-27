@@ -64,7 +64,7 @@ namespace Geeklab.AudiencelabSDK
         }
         
 
-        private async void CheckToken()
+        private void CheckToken()
         {
             Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Checking token");
 

@@ -1,5 +1,3 @@
-
-// InstalledFonts.java
 package com.Geeklab.plugin;
 
 import android.graphics.Typeface;

@@ -139,19 +139,19 @@ namespace Geeklab.AudiencelabSDK
             var manualGaid = global::AudiencelabSDK.GetManualAdvertisingId();
             var manualAppSetId = global::AudiencelabSDK.GetManualAppSetId();
             var settings = AudienceLabSettings.Instance;
-            var manualMode = settings != null && settings.enableGaidManualMode;
             var autoMode = settings != null ? settings.enableGaidAutoCollection :
                 (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.EnableGaidCollection);
             var allowAppSetAuto = settings == null || settings.enableAppSetIdAutoCollection;
 
             var hasManualGaid = !string.IsNullOrEmpty(manualGaid);
             var hasManualAppSet = !string.IsNullOrEmpty(manualAppSetId);
-            var allowGaidAuto = autoMode && !manualMode && !hasManualGaid;
+            // Auto-collect GAID if enabled and no manual value provided
+            var allowGaidAuto = autoMode && !hasManualGaid;
             var allowAppSetIdAuto = allowAppSetAuto && !hasManualAppSet;
 
             if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
             {
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Android identity config: manualMode={manualMode}, autoMode={autoMode}, allowGaidAuto={allowGaidAuto}, allowAppSetIdAuto={allowAppSetIdAuto}, hasManualGaid={hasManualGaid}, hasManualAppSet={hasManualAppSet}");
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Android identity config: autoMode={autoMode}, allowGaidAuto={allowGaidAuto}, allowAppSetIdAuto={allowAppSetIdAuto}, hasManualGaid={hasManualGaid}, hasManualAppSet={hasManualAppSet}");
             }
 
             // Apply manual values immediately if provided
@@ -226,7 +226,6 @@ namespace Geeklab.AudiencelabSDK
                     var manualGaid = global::AudiencelabSDK.GetManualAdvertisingId();
                     var manualAppSetId = global::AudiencelabSDK.GetManualAppSetId();
                     var settings = AudienceLabSettings.Instance;
-                    var manualMode = settings != null && settings.enableGaidManualMode;
                     var autoMode = settings != null ? settings.enableGaidAutoCollection :
                         (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.EnableGaidCollection);
                     var allowAppSetAuto = settings == null || settings.enableAppSetIdAutoCollection;
@@ -234,7 +233,8 @@ namespace Geeklab.AudiencelabSDK
                     var hasManualGaid = !string.IsNullOrEmpty(manualGaid);
                     var hasManualAppSet = !string.IsNullOrEmpty(manualAppSetId);
 
-                    var allowGaidAuto = autoMode && !manualMode && !hasManualGaid;
+                    // Auto-collect GAID if enabled and no manual value provided
+                    var allowGaidAuto = autoMode && !hasManualGaid;
                     var allowAppSetIdAuto = allowAppSetAuto && !hasManualAppSet;
 
                     // GAID: manual takes priority, then auto-collect, else null

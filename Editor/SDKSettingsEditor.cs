@@ -34,7 +34,7 @@ namespace Geeklab.AudiencelabSDK
             Info
         }
 
-        [MenuItem("AudiencelabSDK/SDK Settings")]
+        [MenuItem("Audiencelab SDK/SDK Settings", false, 0)]
         public static void ShowWindow()
         {
             GetWindow<SDKSettingsEditor>("SDK Settings").minSize = minWindowSize;
@@ -365,22 +365,20 @@ namespace Geeklab.AudiencelabSDK
         private void DrawAndroidIdentitySettings()
         {
             var autoProp = serializedAudienceLabSettings.FindProperty("enableGaidAutoCollection");
-            var manualProp = serializedAudienceLabSettings.FindProperty("enableGaidManualMode");
             var appSetAutoProp = serializedAudienceLabSettings.FindProperty("enableAppSetIdAutoCollection");
 
             EditorGUILayout.LabelField("Android Identity", EditorStyles.boldLabel);
             EditorGUILayout.BeginVertical(GUI.skin.box);
 
-            var selectedMode = autoProp.boolValue ? 0 : (manualProp.boolValue ? 1 : 2);
+            // 0 = Auto, 1 = Disabled
+            var selectedMode = autoProp.boolValue ? 0 : 1;
             selectedMode = GUILayout.Toolbar(selectedMode, new[]
             {
                 "Auto GAID",
-                "Manual GAID",
                 "Disabled"
             });
 
             autoProp.boolValue = selectedMode == 0;
-            manualProp.boolValue = selectedMode == 1;
 
             EditorGUILayout.Space(6f);
             EditorGUILayout.BeginHorizontal();
@@ -389,24 +387,21 @@ namespace Geeklab.AudiencelabSDK
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(6f);
-            EditorGUI.BeginDisabledGroup(selectedMode == 2);
-            EditorGUILayout.PropertyField(appSetAutoProp, new GUIContent("Auto-collect App Set ID"));
-            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.PropertyField(appSetAutoProp, new GUIContent("Auto-collect App Set ID",
+                "Collects App Set ID via Play Services. Disable to avoid adding Play Services dependencies."));
 
             EditorGUILayout.Space(6f);
-            DrawGaidModeBanner(selectedMode);
+            DrawGaidModeBanner(selectedMode, appSetAutoProp.boolValue);
 
-            if (selectedMode == 0)
+            // Show validation if Auto GAID is enabled OR if App Set ID auto is enabled (needs Play Services)
+            if (selectedMode == 0 || appSetAutoProp.boolValue)
             {
                 EditorGUILayout.Space(6f);
-                DrawGaidValidation(true);
+                DrawGaidValidation(selectedMode == 0);
             }
 
-            if (selectedMode != 2)
-            {
-                EditorGUILayout.Space(6f);
-                DrawGaidSetupInstructions(selectedMode == 0);
-            }
+            EditorGUILayout.Space(6f);
+            DrawGaidSetupInstructions(selectedMode == 0);
 
             EditorGUILayout.EndVertical();
         }
@@ -441,13 +436,8 @@ namespace Geeklab.AudiencelabSDK
             Color color;
             if (selectedMode == 0)
             {
-                label = "ENABLED";
+                label = "AUTO";
                 color = new Color(0.2f, 0.65f, 0.2f);
-            }
-            else if (selectedMode == 1)
-            {
-                label = "MANUAL";
-                color = new Color(0.2f, 0.45f, 0.75f);
             }
             else
             {
@@ -466,30 +456,25 @@ namespace Geeklab.AudiencelabSDK
             GUI.Label(rect, label, style);
         }
 
-        private void DrawGaidModeBanner(int selectedMode)
+        private void DrawGaidModeBanner(int selectedMode, bool appSetAutoEnabled)
         {
             if (selectedMode == 0)
             {
                 EditorGUILayout.HelpBox(
-                    "GAID auto-collection is enabled. Requires AD_ID permission and Google Play services dependencies.\n" +
+                    "GAID auto-collection is enabled. Requires AD_ID permission and Google Play Services dependencies.\n" +
                     "GAID may be unavailable if user deletes Advertising ID or Play Services is missing; events will still send.",
-                    MessageType.Info);
-            }
-            else if (selectedMode == 1)
-            {
-                EditorGUILayout.HelpBox(
-                    "Auto-collection disabled. Provide GAID yourself by calling:\n" +
-                    "AudiencelabSDK.SetAdvertisingId(gaid)\n" +
-                    "Optional: AudiencelabSDK.SetAppSetId(appSetId)\n" +
-                    "App Set ID and Android ID do not require runtime permissions, but App Set ID depends on Play services libraries.\n" +
-                    "Setup checks below are informational in Manual mode.",
                     MessageType.Info);
             }
             else
             {
+                var depsNote = appSetAutoEnabled
+                    ? "\n\nNote: App Set ID auto-collection is enabled and requires Play Services dependencies."
+                    : "\n\nNo Play Services dependencies required.";
                 EditorGUILayout.HelpBox(
-                    "Android identity is disabled: SDK will not attempt to read GAID. " +
-                    "App Set ID and Android ID do not require runtime permissions, but App Set ID depends on Play services libraries.",
+                    "GAID auto-collection is disabled. You can optionally provide identifiers manually:\n" +
+                    "• AudiencelabSDK.SetAdvertisingId(gaid)\n" +
+                    "• AudiencelabSDK.SetAppSetId(appSetId)" +
+                    depsNote,
                     MessageType.None);
             }
         }
@@ -547,19 +532,21 @@ namespace Geeklab.AudiencelabSDK
             if (autoMode)
             {
                 return
-                    "1) Add AD_ID permission to AndroidManifest.xml\n" +
-                    "   <uses-permission android:name=\"com.google.android.gms.permission.AD_ID\" />\n" +
-                    "2) Ensure AudienceLabIdentity.gradle is included OR add deps to mainTemplate.gradle\n" +
-                    "   - com.google.android.gms:play-services-ads-identifier\n" +
-                    "   - com.google.android.gms:play-services-appset\n" +
-                    "3) Validate in Development Build using AudienceLab Debug Overlay (gaid yes/no)";
+                    "Auto GAID Mode - Setup is automatic:\n\n" +
+                    "1) AD_ID permission is included in the SDK's AndroidManifest.xml\n" +
+                    "2) Play Services dependencies are auto-generated at build time\n" +
+                    "3) Validate in Development Build using Debug Overlay (check GAID field)\n\n" +
+                    "Manual dependency generation: Audiencelab SDK > Android > Regenerate Android Dependencies";
             }
 
             return
-                "1) Call AudiencelabSDK.SetAdvertisingId(gaid)\n" +
-                "   Optional: AudiencelabSDK.SetAppSetId(appSetId)\n" +
-                "2) (Optional) Add AD_ID permission and dependencies if you may switch to Auto mode later\n" +
-                "3) Validate in Development Build using AudienceLab Debug Overlay (gaid yes/no)";
+                "Disabled Mode:\n\n" +
+                "1) SDK will not auto-collect GAID\n" +
+                "2) You can optionally provide identifiers manually:\n" +
+                "   • AudiencelabSDK.SetAdvertisingId(gaid)\n" +
+                "   • AudiencelabSDK.SetAppSetId(appSetId)\n" +
+                "3) No Play Services dependencies added (unless App Set ID auto-collection is enabled)\n" +
+                "4) Validate in Development Build using Debug Overlay";
         }
 
         private static (ValidationSeverity severity, string statusMessage, string detailMessage, MessageType messageType)
@@ -603,12 +590,26 @@ namespace Geeklab.AudiencelabSDK
         private static (ValidationSeverity severity, string statusMessage, string detailMessage, MessageType messageType)
             CheckAndroidIdentityDependencies(bool autoMode)
         {
+            // Check if current settings require Play Services dependencies
+            var settings = Resources.Load<AudienceLabSettings>("AudienceLabSettings");
+            bool needsPlayServices = settings == null || settings.enableGaidAutoCollection || settings.enableAppSetIdAutoCollection;
+
+            if (!needsPlayServices)
+            {
+                return (ValidationSeverity.Ok, 
+                    "Play Services dependencies not required", 
+                    "GAID and App Set ID auto-collection are disabled. No Google Play Services dependencies needed.",
+                    MessageType.Info);
+            }
+
+            // Check if gradle file exists (either generated or manual)
             var identityGradlePath = Path.Combine(Application.dataPath, "Plugins", "Android", "AudienceLabIdentity.gradle");
             if (File.Exists(identityGradlePath))
             {
-                return (ValidationSeverity.Ok, "AudienceLabIdentity.gradle present", null, MessageType.None);
+                return (ValidationSeverity.Ok, "Android dependencies configured", null, MessageType.None);
             }
 
+            // Check if dependencies are in mainTemplate.gradle
             var mainTemplatePath = Path.Combine(Application.dataPath, "Plugins", "Android", "mainTemplate.gradle");
             if (File.Exists(mainTemplatePath))
             {
@@ -619,25 +620,20 @@ namespace Geeklab.AudiencelabSDK
                     var hasAppSet = mainTemplateText.Contains("com.google.android.gms:play-services-appset");
                     if (hasAdsId && hasAppSet)
                     {
-                        return (ValidationSeverity.Ok, "mainTemplate.gradle includes required dependencies", null,
-                            MessageType.None);
+                        return (ValidationSeverity.Ok, "Dependencies in mainTemplate.gradle", null, MessageType.None);
                     }
                 }
                 catch (Exception)
                 {
-                    return (ValidationSeverity.Info,
-                        "Dependency check failed",
-                        "Unable to read mainTemplate.gradle. Ensure the file is readable.",
-                        MessageType.Info);
+                    // Continue to show auto-generation info
                 }
             }
 
-            var severity = autoMode ? ValidationSeverity.Warning : ValidationSeverity.Info;
-            var messageType = autoMode ? MessageType.Warning : MessageType.Info;
-            return (severity,
-                "Android identity dependencies missing",
-                "Add AudienceLabIdentity.gradle OR add required dependencies to mainTemplate.gradle if you use Custom Main Gradle Template.",
-                messageType);
+            // Dependencies will be auto-generated at build time
+            return (ValidationSeverity.Info,
+                "Dependencies auto-generated at build",
+                "Play Services dependencies will be automatically added when building for Android.\nUse 'Audiencelab SDK > Android > Regenerate Android Dependencies' to generate now.",
+                MessageType.Info);
         }
 
         private static bool IsCustomMainGradleTemplateEnabledByFile()

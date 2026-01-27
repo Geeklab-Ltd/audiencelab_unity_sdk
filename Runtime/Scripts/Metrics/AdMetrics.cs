@@ -53,11 +53,19 @@ namespace Geeklab.AudiencelabSDK
         [Obsolete("Use AudiencelabSDK.SendAdEvent(...) instead.")]
         public static void SendCustomAdEvent(string ad_id, string name, string source, int watch_time, bool reward, string media_source, string channel, double value, string currency, string dedupeKey = null)
         {
+            SendAdEventInternal(ad_id, name, source, watch_time, reward, media_source, channel, value, currency, dedupeKey);
+        }
+
+        /// <summary>
+        /// Internal implementation - called by AudiencelabSDK.SendAdEvent
+        /// </summary>
+        internal static void SendAdEventInternal(string ad_id, string name, string source, int watch_time, bool reward, string media_source, string channel, double value, string currency, string dedupeKey = null)
+        {
             if (!SDKSettingsModel.Instance.IsSDKEnabled) 
                 return;
             
             if (SDKSettingsModel.Instance.ShowDebugLog)
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending custom.Ad event"); 
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending ad event"); 
 
             // Add to the cumulative ad value
             double totalAdValue = AddToTotalAdValue(value);
@@ -75,7 +83,7 @@ namespace Geeklab.AudiencelabSDK
                 total_ad_value = totalAdValue
                 };      
 
-            SendMetrics(data, true, dedupeKey);
+            _ = SendMetrics(data, true, dedupeKey);
         }
 
         public static async Task<bool> SendMetrics(object postData = null, bool isCustom = false, string dedupeKey = null)

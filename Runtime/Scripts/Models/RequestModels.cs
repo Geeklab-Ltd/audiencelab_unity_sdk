@@ -34,6 +34,7 @@ namespace Geeklab.AudiencelabSDK
         public string sdk_type;
         public string app_version;
         public string unity_version;
+        public bool dev;
         [JsonProperty("ifv")]
         public string idfv;
         [JsonProperty("ga")]
@@ -75,6 +76,7 @@ namespace Geeklab.AudiencelabSDK
         public string sdk_type;
         public string app_version;
         public string unity_version;
+        public bool dev;
         [JsonProperty("ifv")]
         public string idfv;
         [JsonProperty("ga")]

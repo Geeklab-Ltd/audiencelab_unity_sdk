@@ -49,11 +49,34 @@ namespace Geeklab.AudiencelabSDK
         [Obsolete("Use AudiencelabSDK.SendPurchaseEvent(...) instead.")]
         public static void SendCustomPurchaseEvent(string id, string name, double value, string currency, string status, string tr_id = null)
         {
+            SendPurchaseEventInternal(id, name, value, currency, status, tr_id);
+        }
+
+        /// <summary>
+        /// Send a simplified purchase event with automatic total_purchase_value tracking
+        /// </summary>
+        /// <param name="item_id">Unique identifier for the purchased item</param>
+        /// <param name="item_name">Name of the purchased item</param>
+        /// <param name="value">The value of this purchase</param>
+        /// <param name="currency">Currency of the purchase value</param>
+        /// <param name="status">Status of the purchase (e.g., "Completed", "Failed")</param>
+        /// <param name="tr_id">Optional transaction ID for the purchase</param>
+        [Obsolete("Use AudiencelabSDK.SendPurchaseEvent(...) instead.")]
+        public static void SendPurchaseEvent(string item_id, string item_name, double value, string currency = "USD", string status = "Completed", string tr_id = null)
+        {
+            SendPurchaseEventInternal(item_id, item_name, value, currency, status, tr_id);
+        }
+
+        /// <summary>
+        /// Internal implementation - called by AudiencelabSDK.SendPurchaseEvent
+        /// </summary>
+        internal static void SendPurchaseEventInternal(string id, string name, double value, string currency, string status, string tr_id = null)
+        {
             if (!IsConfigFullyEnabled())
                 return;
             
             if (SDKSettingsModel.Instance.ShowDebugLog)
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending custom.purchase event"); 
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending purchase event"); 
             
             idOfPurchasedItem = id;
             valueOfPurchase = value;
@@ -78,47 +101,7 @@ namespace Geeklab.AudiencelabSDK
                 tr_id = tr_id
                 };
 
-            SendPurchaseMetrics(data, true, tr_id);
-        }
-
-        /// <summary>
-        /// Send a simplified purchase event with automatic total_purchase_value tracking
-        /// </summary>
-        /// <param name="item_id">Unique identifier for the purchased item</param>
-        /// <param name="item_name">Name of the purchased item</param>
-        /// <param name="value">The value of this purchase</param>
-        /// <param name="currency">Currency of the purchase value</param>
-        /// <param name="status">Status of the purchase (e.g., "Completed", "Failed")</param>
-        /// <param name="tr_id">Optional transaction ID for the purchase</param>
-        [Obsolete("Use AudiencelabSDK.SendPurchaseEvent(...) instead.")]
-        public static void SendPurchaseEvent(string item_id, string item_name, double value, string currency = "USD", string status = "Completed", string tr_id = null)
-        {
-            if (!IsConfigFullyEnabled())
-                return;
-            
-            if (SDKSettingsModel.Instance.ShowDebugLog)
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending purchase event"); 
-
-            // Add to the cumulative purchase value if status is Completed
-            if (!string.IsNullOrEmpty(status) && (status.ToLower() == "completed" || status.ToLower() == "success"))
-                AddToTotalPurchaseValue(value);
-            else
-                if (SDKSettingsModel.Instance.ShowDebugLog)
-                    Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Purchase event status is not Completed");
-
-            double totalPurchaseValue = GetTotalPurchaseValue();
-
-            var data = new {
-                item_id = item_id,
-                item_name = item_name,
-                value = value,
-                currency = currency,
-                status = status,
-                total_purchase_value = totalPurchaseValue,
-                tr_id = tr_id
-                };
-
-            SendPurchaseMetrics(data, false, tr_id);
+            _ = SendPurchaseMetrics(data, true, tr_id);
         }
 
         private static string token;
