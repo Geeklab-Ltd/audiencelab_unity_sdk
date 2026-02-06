@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-02-06
+
+### Fixed (hotfix)
+
+- Removed SDK test assemblies from the package. The tests ran in Edit Mode while the code under test (e.g. `WebRequestManager.Instance`) uses `DontDestroyOnLoad`, which only works in Play Mode, causing integration errors. Tests and `testables` have been removed from the distributed package.
+
 ## [1.1.1] - 2026-01-27
 
 ### Added
