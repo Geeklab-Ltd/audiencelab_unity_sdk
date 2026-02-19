@@ -5,6 +5,20 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-02-19
+
+### Added
+
+- EDM (External Dependency Manager) support: the SDK now generates an `AudienceLabIdentityDependencies.xml` file alongside the Gradle file, so projects using EDM / Play Services Resolver can resolve Play Services dependencies automatically
+- Both dependency mechanisms (Gradle file + EDM XML) are generated and managed together based on SDK settings
+
+### Changed
+
+- Refactored `AudienceLabIdentity.java` to use reflection for Play Services classes instead of direct imports — the file now compiles regardless of whether Play Services dependencies are present
+- Android identity settings changes now immediately regenerate dependency files (instead of waiting until build time), which is important for EDM users since EDM resolves dependencies in the editor
+- Updated dependency validation in SDK settings to detect both Gradle and EDM XML dependency files
+- Updated setup instructions to document EDM support
+
 ## [1.1.2] - 2026-02-06
 
 ### Fixed (hotfix)

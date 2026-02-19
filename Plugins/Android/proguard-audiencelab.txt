@@ -1,0 +1,29 @@
+# AudienceLab SDK — keep rules for Play Services classes accessed via reflection.
+# R8/ProGuard cannot trace reflection-based usage, so these rules ensure the
+# classes and methods used by AudienceLabIdentity.java are not stripped or renamed.
+
+-keep class com.google.android.gms.ads.identifier.AdvertisingIdClient {
+    public static *;
+}
+-keep class com.google.android.gms.ads.identifier.AdvertisingIdClient$Info {
+    public *;
+}
+
+-keep class com.google.android.gms.appset.AppSet {
+    public static *;
+}
+-keep interface com.google.android.gms.appset.AppSetIdClient {
+    public *;
+}
+-keep class com.google.android.gms.appset.AppSetIdInfo {
+    public *;
+}
+
+-keep class com.google.android.gms.tasks.Tasks {
+    public static *;
+}
+-keep class com.google.android.gms.tasks.Task {
+    public *;
+}
+
+-keep class com.Geeklab.plugin.** { *; }

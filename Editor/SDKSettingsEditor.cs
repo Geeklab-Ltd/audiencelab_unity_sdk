@@ -372,6 +372,9 @@ namespace Geeklab.AudiencelabSDK
 
             // 0 = Auto, 1 = Disabled
             var selectedMode = autoProp.boolValue ? 0 : 1;
+            var previousMode = selectedMode;
+            var previousAppSet = appSetAutoProp.boolValue;
+
             selectedMode = GUILayout.Toolbar(selectedMode, new[]
             {
                 "Auto GAID",
@@ -404,6 +407,14 @@ namespace Geeklab.AudiencelabSDK
             DrawGaidSetupInstructions(selectedMode == 0);
 
             EditorGUILayout.EndVertical();
+
+            // Regenerate dependency files when Android identity settings change
+            if (selectedMode != previousMode || appSetAutoProp.boolValue != previousAppSet)
+            {
+                serializedAudienceLabSettings.ApplyModifiedProperties();
+                SaveAudienceLabSettings();
+                Editor.AndroidDependencyManager.RegenerateFromCurrentSettings();
+            }
         }
 
         private void SaveSDKSettingsModel()
@@ -535,7 +546,13 @@ namespace Geeklab.AudiencelabSDK
                     "Auto GAID Mode - Setup is automatic:\n\n" +
                     "1) AD_ID permission is included in the SDK's AndroidManifest.xml\n" +
                     "2) Play Services dependencies are auto-generated at build time\n" +
-                    "3) Validate in Development Build using Debug Overlay (check GAID field)\n\n" +
+                    "   • Gradle file: Assets/Plugins/Android/AudienceLabIdentity.gradle\n" +
+                    "   • EDM XML file: Assets/Plugins/Android/AudienceLabIdentityDependencies.xml\n" +
+                    "3) EDM (External Dependency Manager) users: dependencies are resolved automatically via the XML file\n" +
+                    "4) Validate in Development Build using Debug Overlay (check GAID field)\n\n" +
+                    "If using a Custom Main Gradle Template (mainTemplate.gradle), add these to the dependencies block:\n" +
+                    "   implementation '" + Editor.AndroidDependencyManager.PlayServicesAdsId + "'\n" +
+                    "   implementation '" + Editor.AndroidDependencyManager.PlayServicesAppSet + "'\n\n" +
                     "Manual dependency generation: Audiencelab SDK > Android > Regenerate Android Dependencies";
             }
 
@@ -590,50 +607,64 @@ namespace Geeklab.AudiencelabSDK
         private static (ValidationSeverity severity, string statusMessage, string detailMessage, MessageType messageType)
             CheckAndroidIdentityDependencies(bool autoMode)
         {
-            // Check if current settings require Play Services dependencies
-            var settings = Resources.Load<AudienceLabSettings>("AudienceLabSettings");
-            bool needsPlayServices = settings == null || settings.enableGaidAutoCollection || settings.enableAppSetIdAutoCollection;
+            var status = Editor.AndroidDependencyManager.GetResolutionStatus();
 
-            if (!needsPlayServices)
+            switch (status)
             {
-                return (ValidationSeverity.Ok, 
-                    "Play Services dependencies not required", 
-                    "GAID and App Set ID auto-collection are disabled. No Google Play Services dependencies needed.",
-                    MessageType.Info);
-            }
+                case Editor.AndroidDependencyManager.DependencyResolutionStatus.NotRequired:
+                    return (ValidationSeverity.Ok,
+                        "Play Services dependencies not required",
+                        "GAID and App Set ID auto-collection are disabled. No Google Play Services dependencies needed.",
+                        MessageType.Info);
 
-            // Check if gradle file exists (either generated or manual)
-            var identityGradlePath = Path.Combine(Application.dataPath, "Plugins", "Android", "AudienceLabIdentity.gradle");
-            if (File.Exists(identityGradlePath))
-            {
-                return (ValidationSeverity.Ok, "Android dependencies configured", null, MessageType.None);
-            }
+                case Editor.AndroidDependencyManager.DependencyResolutionStatus.EdmResolved:
+                    return (ValidationSeverity.Ok,
+                        "Dependencies resolved via EDM",
+                        null, MessageType.None);
 
-            // Check if dependencies are in mainTemplate.gradle
-            var mainTemplatePath = Path.Combine(Application.dataPath, "Plugins", "Android", "mainTemplate.gradle");
-            if (File.Exists(mainTemplatePath))
-            {
-                try
-                {
-                    var mainTemplateText = File.ReadAllText(mainTemplatePath);
-                    var hasAdsId = mainTemplateText.Contains("com.google.android.gms:play-services-ads-identifier");
-                    var hasAppSet = mainTemplateText.Contains("com.google.android.gms:play-services-appset");
-                    if (hasAdsId && hasAppSet)
-                    {
-                        return (ValidationSeverity.Ok, "Dependencies in mainTemplate.gradle", null, MessageType.None);
-                    }
-                }
-                catch (Exception)
-                {
-                    // Continue to show auto-generation info
-                }
-            }
+                case Editor.AndroidDependencyManager.DependencyResolutionStatus.MainTemplateGradle:
+                    return (ValidationSeverity.Ok,
+                        "Dependencies in mainTemplate.gradle",
+                        null, MessageType.None);
 
-            // Dependencies will be auto-generated at build time
-            return (ValidationSeverity.Info,
-                "Dependencies auto-generated at build",
-                "Play Services dependencies will be automatically added when building for Android.\nUse 'Audiencelab SDK > Android > Regenerate Android Dependencies' to generate now.",
-                MessageType.Info);
+                case Editor.AndroidDependencyManager.DependencyResolutionStatus.LooseGradleOnly:
+                    return (ValidationSeverity.Warning,
+                        "Dependencies may not resolve",
+                        "Play Services dependencies are provided via a loose .gradle file, which is not " +
+                        "picked up by all Unity/Gradle configurations.\n\n" +
+                        "Recommended: Install the External Dependency Manager (EDM) package for " +
+                        "reliable dependency resolution, or add the dependencies to your mainTemplate.gradle.",
+                        MessageType.Warning);
+
+                case Editor.AndroidDependencyManager.DependencyResolutionStatus.EdmXmlWithoutEdm:
+                    return (ValidationSeverity.Warning,
+                        "EDM not installed",
+                        "An EDM XML dependency file is present but the External Dependency Manager (EDM) " +
+                        "package is not installed. Dependencies will not be resolved.\n\n" +
+                        "Install EDM from Google, or add the dependencies to your mainTemplate.gradle:\n" +
+                        "  implementation '" + Editor.AndroidDependencyManager.PlayServicesAdsId + "'\n" +
+                        "  implementation '" + Editor.AndroidDependencyManager.PlayServicesAppSet + "'",
+                        MessageType.Warning);
+
+                case Editor.AndroidDependencyManager.DependencyResolutionStatus.NoneDetected:
+                    return (ValidationSeverity.Warning,
+                        "No dependency source detected",
+                        "Auto GAID / App Set ID requires Google Play Services, but no reliable dependency " +
+                        "source was found. GAID and App Set ID will be null at runtime.\n\n" +
+                        "To fix, do ONE of the following:\n" +
+                        "• Install External Dependency Manager (EDM) — dependencies resolve automatically\n" +
+                        "• Enable Custom Main Gradle Template and add dependencies manually\n" +
+                        "• Use 'Audiencelab SDK > Android > Regenerate Android Dependencies'\n\n" +
+                        "Dependencies will also be auto-generated at build time, but the loose .gradle file " +
+                        "may not be picked up by all project configurations.",
+                        MessageType.Warning);
+
+                default:
+                    return (ValidationSeverity.Info,
+                        "Dependencies auto-generated at build",
+                        "Use 'Audiencelab SDK > Android > Regenerate Android Dependencies' to generate now.",
+                        MessageType.Info);
+            }
         }
 
         private static bool IsCustomMainGradleTemplateEnabledByFile()

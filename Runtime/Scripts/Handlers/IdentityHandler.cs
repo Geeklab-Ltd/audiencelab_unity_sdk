@@ -102,7 +102,41 @@ namespace Geeklab.AudiencelabSDK
             {
                 Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Identity settled ({reason}): gaid={identityInfo.gaid ?? "null"}, app_set_id={identityInfo.app_set_id ?? "null"}, android_id={identityInfo.android_id ?? "null"}, idfv={identityInfo.idfv ?? "null"}");
             }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+            WarnIfIdentityMissing();
+#endif
         }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        private void WarnIfIdentityMissing()
+        {
+            var settings = AudienceLabSettings.Instance;
+            if (settings == null)
+                return;
+
+            bool autoGaid = settings.enableGaidAutoCollection;
+            bool autoAppSet = settings.enableAppSetIdAutoCollection;
+
+            if (autoGaid && string.IsNullOrEmpty(identityInfo.gaid))
+            {
+                Debug.LogWarning(
+                    "[AudienceLab] Auto GAID collection is enabled but GAID is null. " +
+                    "This usually means Google Play Services dependencies are missing from the build. " +
+                    "Install the External Dependency Manager (EDM) package, or add the dependencies " +
+                    "to your mainTemplate.gradle. See SDK Settings > Android Identity for details.");
+            }
+
+            if (autoAppSet && string.IsNullOrEmpty(identityInfo.app_set_id))
+            {
+                Debug.LogWarning(
+                    "[AudienceLab] Auto App Set ID collection is enabled but App Set ID is null. " +
+                    "This usually means Google Play Services dependencies are missing from the build. " +
+                    "Install the External Dependency Manager (EDM) package, or add the dependencies " +
+                    "to your mainTemplate.gradle. See SDK Settings > Android Identity for details.");
+            }
+        }
+#endif
 
         public static IEnumerator WaitForIdentitySettle(Action onSettled)
         {

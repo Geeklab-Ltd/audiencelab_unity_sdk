@@ -1,9 +1,9 @@
 {
 	"name": "com.geeklab.audiencelab-sdk",
 	"displayName": "Audiencelab SDK",
-	"version": "1.1.2",
+	"version": "1.1.3",
 	"unity": "2023.1",
-	"description": "Audiencelab SDK is a set of utilities for development in Unity. It includes tools for handling deep links, collecting metrics, managing network requests, and much more.",
+	"description": "AudienceLab is a mobile attribution SDK for Unity that tracks user acquisition, ad revenue, in-app purchases, custom events and session tracking.",
 	"keywords": [
 		"unity",
 		"package",
@@ -20,14 +20,7 @@
 		"com.unity.nuget.newtonsoft-json": "3.0.2"
 	},
 	"repository": {
-		"url": "https://github.com/Geeklab-Ltd/AudienceLab-SDK-Shared",
+		"url": "https://github.com/Geeklab-Ltd/audiencelab_unity_sdk",
 		"type": "git"
-	},
-	"samples": [
-		{
-			"displayName": "SDK Sample",
-			"description": "This sample shows how to use the Audiencelab SDK in a Unity game. It demonstrates tracking user actions and sending this data to Geeklab, helping developers start using the Audiencelab SDK in their own apps.",
-			"path": "Samples~"
-		}
-	]
+	}
 }
