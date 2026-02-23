@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] - 2026-02-23
+
+### Fixed
+
+- Added `Editor/geeklab.audiencelab-sdk.Editor.asmdef` so Editor scripts compile in an editor-only assembly and are excluded from Android/player build analysis, resolving `UDR0001` errors in CI builds.
+
 ## [1.1.4] - 2026-02-19
 
 ### Fixed (hotfix)
