@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 
@@ -107,10 +106,7 @@ namespace Geeklab.AudiencelabSDK
             var backfillDay = PlayerPrefs.GetInt("backfillDay").ToString();
             var retentionDay = PlayerPrefs.GetInt("retentionDay").ToString();
 
-            var data = new { 
-                retentionDay = retentionDay, 
-                backfillDay = backfillDay 
-            };
+            var data = WebhookPayloadFactory.CreateRetention(retentionDay, backfillDay);
         
             PlayerPrefs.SetString("lastSentMetricDate", today);
             _ = SendMetrics(data);

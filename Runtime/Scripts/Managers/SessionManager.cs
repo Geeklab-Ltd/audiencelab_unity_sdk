@@ -156,14 +156,7 @@ namespace Geeklab.AudiencelabSDK
             if (durationSeconds < 0)
                 durationSeconds = 0;
 
-            var payload = new
-            {
-                a = "end",
-                r = reason,
-                sid = sessionId,
-                si = sessionIndex,
-                sd = durationSeconds
-            };
+            var payload = WebhookPayloadFactory.CreateSessionEnd(reason, sessionId, sessionIndex, durationSeconds);
 
             var shouldSend = SDKSettingsModel.Instance != null &&
                              SDKSettingsModel.Instance.IsSDKEnabled &&
@@ -199,12 +192,7 @@ namespace Geeklab.AudiencelabSDK
                              SDKSettingsModel.Instance.IsSDKEnabled &&
                              SDKSettingsModel.Instance.SendStatistics;
 
-            var payload = new
-            {
-                a = "start",
-                sid = sessionId,
-                si = sessionIndex
-            };
+            var payload = WebhookPayloadFactory.CreateSessionStart(sessionId, sessionIndex);
 
             if (shouldSend)
             {
@@ -224,14 +212,7 @@ namespace Geeklab.AudiencelabSDK
             if (durationSeconds < 0)
                 durationSeconds = 0;
 
-            var payload = new
-            {
-                a = "end",
-                r = reason,
-                sid = sessionId,
-                si = sessionIndex,
-                sd = durationSeconds
-            };
+            var payload = WebhookPayloadFactory.CreateSessionEnd(reason, sessionId, sessionIndex, durationSeconds);
 
             sessionActive = false;
             var shouldSend = SDKSettingsModel.Instance != null &&

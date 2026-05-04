@@ -1,8 +1,6 @@
 using System;
 using UnityEngine;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 
 namespace Geeklab.AudiencelabSDK
@@ -70,18 +68,17 @@ namespace Geeklab.AudiencelabSDK
             // Add to the cumulative ad value
             double totalAdValue = AddToTotalAdValue(value);
             
-            var data = new {
-                ad_id = ad_id,
-                name = name,
-                source = source,
-                watch_time = watch_time,
-                reward = reward,
-                media_source = media_source,
-                channel = channel,
-                value = value,
-                currency = currency,
-                total_ad_value = totalAdValue
-                };      
+            var data = WebhookPayloadFactory.CreateAd(
+                ad_id,
+                name,
+                source,
+                watch_time,
+                reward,
+                media_source,
+                channel,
+                value,
+                currency,
+                totalAdValue);
 
             _ = SendMetrics(data, true, dedupeKey);
         }

@@ -5,6 +5,13 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.7] - 2026-05-04
+
+### Fixed
+
+- Replaced anonymous webhook payload objects with dictionary-backed payloads for SDK-generated purchase, ad, retention, session, and custom-event requests so Unity/Newtonsoft serialization does not emit empty `{}` payloads in stripped player builds.
+- Normalized custom-event `properties` values to safe JSON primitives, dictionaries, and lists before serialization. Unsupported complex objects now log a warning and serialize as strings instead of relying on reflection over client object types.
+
 ## [1.1.6] - 2026-02-23
 
 ### Fixed

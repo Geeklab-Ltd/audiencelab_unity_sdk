@@ -18,11 +18,7 @@ namespace Geeklab.AudiencelabSDK
 
             var taskCompletionSource = new TaskCompletionSource<bool>();
 
-            var payload = new
-            {
-                en = eventName,
-                pr = properties
-            };
+            var payload = WebhookPayloadFactory.CreateCustomEvent(eventName, properties);
 
             WebRequestManager.Instance.SendCustomEventRequest(payload, dedupeKey, eventName, s =>
             {

@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 
@@ -91,15 +90,14 @@ namespace Geeklab.AudiencelabSDK
 
             double totalPurchaseValue = GetTotalPurchaseValue();
 
-            var data = new {
-                item_id = idOfPurchasedItem,
-                item_name = name,
-                value = valueOfPurchase,
-                currency = currency,
-                status = status,
-                total_purchase_value = totalPurchaseValue,
-                tr_id = tr_id
-                };
+            var data = WebhookPayloadFactory.CreatePurchase(
+                idOfPurchasedItem,
+                name,
+                valueOfPurchase,
+                currency,
+                status,
+                totalPurchaseValue,
+                tr_id);
 
             _ = SendPurchaseMetrics(data, true, tr_id);
         }

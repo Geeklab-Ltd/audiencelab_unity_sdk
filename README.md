@@ -95,6 +95,23 @@ When building your application for Android in release mode with code obfuscation
 
 ## Custom Event Tracking
 
+### SendCustomEvent Function
+
+Use `AudiencelabSDK.SendCustomEvent(...)` for non-standard analytics events. Pass custom properties as `Dictionary<string, object>` values, lists/arrays, strings, numbers, booleans, enums, dates, or GUIDs. Arbitrary complex objects are not recommended because Unity player builds can strip reflection metadata needed by JSON serializers.
+
+**Example Usage**:
+
+```csharp
+AudiencelabSDK.SendCustomEvent(
+    "level_up",
+    new Dictionary<string, object>
+    {
+        { "level", 5 },
+        { "mode", "challenge" }
+    }
+);
+```
+
 ### SendCustomPurchaseEvent Function
 
 This function is used to track custom purchase events within your application.

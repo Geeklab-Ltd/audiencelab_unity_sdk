@@ -10,7 +10,7 @@ namespace Geeklab.AudiencelabSDK
         /// <summary>
         /// Current SDK version - should match package.json version
         /// </summary>
-        public const string VERSION = "1.1.4";
+        public const string VERSION = "1.1.7";
         
         /// <summary>
         /// SDK type identifier
@@ -65,4 +65,4 @@ namespace Geeklab.AudiencelabSDK
         /// </summary>
         public static string CompleteVersionInfo => $"App:{AppVersion} SDK:{VERSION}";
     }
-} 
+}
