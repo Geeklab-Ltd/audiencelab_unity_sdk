@@ -7,6 +7,7 @@ using System.IO;
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 
 namespace Geeklab.AudiencelabSDK
@@ -17,10 +18,13 @@ namespace Geeklab.AudiencelabSDK
         private const int MaxQueuedEvents = 200;
         private const double MaxQueuedAgeHours = 24d;
         private const float IdentityWaitTimeoutSeconds = 2f;
+        private const float QueueRetryDelaySeconds = 15f;
 
         private static WebRequestManager instance;
         private static List<QueuedWebhookRequest> queuedWebhookRequests;
+        private static readonly HashSet<string> inFlightWebhookEventIds = new HashSet<string>();
         private static bool isFlushRunning;
+        private static bool isQueueRetryScheduled;
         private static bool hasLoggedQueueDrop;
         private static long queueSequence;
 
@@ -30,17 +34,29 @@ namespace Geeklab.AudiencelabSDK
 
         public static WebRequestManager Instance
         {
-            get
-            {
-                if (instance == null)
-                {
-                    var go = new GameObject(nameof(WebRequestManager));
-                    instance = go.AddComponent<WebRequestManager>();
-                    DontDestroyOnLoad(go);
-                }
+            get { return EnsureCreated(); }
+        }
 
+        internal static WebRequestManager EnsureOn(GameObject owner)
+        {
+            return EnsureCreated(owner);
+        }
+
+        private static WebRequestManager EnsureCreated(GameObject owner = null)
+        {
+            if (instance != null)
+            {
                 return instance;
             }
+
+            if (owner != null)
+            {
+                var ownerManager = owner.GetComponent<WebRequestManager>();
+                return ownerManager != null ? ownerManager : owner.AddComponent<WebRequestManager>();
+            }
+
+            var go = new GameObject(nameof(WebRequestManager));
+            return go.AddComponent<WebRequestManager>();
         }
 
 
@@ -55,16 +71,20 @@ namespace Geeklab.AudiencelabSDK
                 instance = this;
                 DontDestroyOnLoad(gameObject);
                 TokenHandler.OnTokenAvailable += HandleTokenAvailable;
+                SessionManager.OnSessionContextAvailable += HandleSessionContextAvailable;
                 wasOffline = !IsInternetAvailable();
             }
             else
             {
-                Destroy(gameObject);
+                Destroy(this);
             }
         }
 
         private void Update()
         {
+            if (instance != this)
+                return;
+
             // Periodically check for connectivity changes and flush queue when back online
             if (Time.realtimeSinceStartup - lastConnectivityCheckTime < ConnectivityCheckIntervalSeconds)
                 return;
@@ -91,6 +111,8 @@ namespace Geeklab.AudiencelabSDK
             if (instance == this)
             {
                 TokenHandler.OnTokenAvailable -= HandleTokenAvailable;
+                SessionManager.OnSessionContextAvailable -= HandleSessionContextAvailable;
+                instance = null;
             }
         }
 
@@ -104,7 +126,13 @@ namespace Geeklab.AudiencelabSDK
 
         public void SendUserMetricsRequest(object data, Action<string> onSuccess = null, Action<string> onError = null)
         {
-            SendWebhookRequest("retention", data, null, false, onSuccess, onError);
+            SendUserMetricsRequestWithContext(data, null, null, onSuccess, onError);
+        }
+
+        internal void SendUserMetricsRequestWithContext(object data, string eventId = null, string dedupeKey = null,
+            Action<string> onSuccess = null, Action<string> onError = null)
+        {
+            SendWebhookRequest("retention", data, dedupeKey, false, onSuccess, onError, null, eventId);
         }
 
         public void SendAdEventRequest(object data, bool isCustom, string dedupeKey = null, Action<string> onSuccess = null, Action<string> onError = null)
@@ -215,7 +243,7 @@ namespace Geeklab.AudiencelabSDK
             SendRequest(ApiEndpointsModel.FETCH_TOKEN, json, onSuccess, onError, UnityWebRequest.kHttpVerbPOST, null, meta);
         }
 
-        private string GetUtcOffset()
+        private static string GetUtcOffset()
         {
             // Get current UTC offset
             TimeSpan offset = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
@@ -229,9 +257,11 @@ namespace Geeklab.AudiencelabSDK
         }
 
         
-        public void SendSessionEventRequest(object data, bool waitForIdentity, Action<string> onSuccess = null, Action<string> onError = null)
+        public void SendSessionEventRequest(object data, bool waitForIdentity, Action<string> onSuccess = null,
+            Action<string> onError = null, int? retentionDayOverride = null)
         {
-            SendWebhookRequest("session", data, null, waitForIdentity, onSuccess, onError);
+            SendWebhookRequest("session", data, null, waitForIdentity, onSuccess, onError,
+                retentionDayOverride: retentionDayOverride);
         }
 
         public void SendCustomEventRequest(object data, string dedupeKey = null, string eventName = null, Action<string> onSuccess = null, Action<string> onError = null)
@@ -239,67 +269,134 @@ namespace Geeklab.AudiencelabSDK
             SendWebhookRequest("custom", data, dedupeKey, false, onSuccess, onError, eventName);
         }
 
-        private void SendWebhookRequest(string type, object data, string dedupeKey, bool waitForIdentity, Action<string> onSuccess = null, Action<string> onError = null, string eventName = null)
+        private void SendWebhookRequest(string type, object data, string dedupeKey, bool waitForIdentity,
+            Action<string> onSuccess = null, Action<string> onError = null, string eventName = null,
+            string eventIdOverride = null, int? retentionDayOverride = null)
         {
+            var request = CreateWebhookRequest(type, data, dedupeKey, waitForIdentity, eventName, eventIdOverride,
+                retentionDayOverride: retentionDayOverride);
+
+            if (ShouldPersistBeforeSend(request))
+            {
+                EnqueueWebhookRequest(request);
+                if (!TokenHandler.HasValidToken())
+                {
+                    TokenHandler.StartRetryLoop();
+                    return;
+                }
+
+                SendWebhookRequestInternal(request,
+                    response =>
+                    {
+                        RemoveQueuedEntry(request.eventId);
+                        onSuccess?.Invoke(response);
+                    },
+                    onError);
+                return;
+            }
+
             if (!TokenHandler.HasValidToken())
             {
-                EnqueueWebhookRequest(type, data, dedupeKey, eventName, waitForIdentity);
+                EnqueueWebhookRequest(request);
                 TokenHandler.StartRetryLoop();
                 return;
             }
 
-            SendWebhookRequestInternal(type, data, dedupeKey, waitForIdentity, eventName, DateTime.UtcNow, null, onSuccess, onError);
+            SendWebhookRequestInternal(request, onSuccess, onError);
         }
 
-        private void SendWebhookRequestInternal(string type, object data, string dedupeKey, bool waitForIdentity, string eventName,
-            DateTime createdAt, string eventIdOverride, Action<string> onSuccess, Action<string> onError, int? retentionDayOverride = null)
+        private static WebhookRequestContext CreateWebhookRequest(string type, object data, string dedupeKey,
+            bool waitForIdentity, string eventName, string eventIdOverride = null, DateTime? createdAtOverride = null,
+            int? retentionDayOverride = null, string sessionIdOverride = null, int? sessionIndexOverride = null,
+            string utcOffsetOverride = null)
         {
-            if ((waitForIdentity || ShouldWaitForIdentity()) && !IdentityHandler.IsSettled)
+            var sessionId = sessionIdOverride;
+            var sessionIndex = sessionIndexOverride;
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                ResolveSessionContext(type, data, out sessionId, out sessionIndex);
+            }
+
+            return new WebhookRequestContext
+            {
+                type = type,
+                data = data,
+                dedupeKey = dedupeKey,
+                eventName = eventName,
+                waitForIdentity = waitForIdentity,
+                eventId = string.IsNullOrEmpty(eventIdOverride) ? EventIdProvider.GenerateEventId() : eventIdOverride,
+                createdAt = createdAtOverride ?? DateTime.UtcNow,
+                retentionDay = retentionDayOverride.HasValue ? retentionDayOverride : GetCurrentRetentionDay(),
+                sessionId = sessionId,
+                sessionIndex = sessionIndex,
+                // Snapshot the UTC offset at creation time so events queued offline keep their
+                // origin-time offset instead of adopting the device offset at flush time.
+                utcOffset = string.IsNullOrEmpty(utcOffsetOverride) ? GetUtcOffset() : utcOffsetOverride
+            };
+        }
+
+        private void SendWebhookRequestInternal(WebhookRequestContext request, Action<string> onSuccess, Action<string> onError)
+        {
+            if (ShouldWaitForSessionContext(request))
+            {
+                EnqueueWebhookRequest(request);
+                if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
+                {
+                    Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Queued {request.type} event until session context is available");
+                }
+                return;
+            }
+
+            if (!TokenHandler.HasValidToken())
+            {
+                EnqueueWebhookRequest(request);
+                TokenHandler.StartRetryLoop();
+                return;
+            }
+
+            if ((request.waitForIdentity || ShouldWaitForIdentity()) && !IdentityHandler.IsSettled)
             {
                 StartCoroutine(WaitForIdentityOrTimeout(() =>
-                    SendWebhookRequestInternal(type, data, dedupeKey, false, eventName, createdAt, eventIdOverride, onSuccess, onError, retentionDayOverride)));
+                {
+                    request.waitForIdentity = false;
+                    SendWebhookRequestInternal(request, onSuccess, onError);
+                }));
                 return;
             }
 
             // Check for internet - if offline, queue the request instead of losing it
             if (!IsInternetAvailable())
             {
-                EnqueueWebhookRequest(type, data, dedupeKey, eventName, waitForIdentity, eventIdOverride);
+                EnqueueWebhookRequest(request);
                 if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
                 {
-                    Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} No internet - queued {type} event for later");
+                    Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} No internet - queued {request.type} event for later");
                 }
                 onError?.Invoke("Queued for retry - no internet");
                 return;
             }
 
-            var currentDateText = createdAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss");
+            var currentDateText = request.createdAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss");
             var deviceInfo = DeviceInfoHandler.GetDeviceInfo();
-            var utcOffset = GetUtcOffset();
+            var utcOffset = string.IsNullOrEmpty(request.utcOffset) ? GetUtcOffset() : request.utcOffset;
             var identityInfo = IdentityHandler.Current;
             var whitelisted = UserPropertiesManager.GetWhitelistedProperties();
             var blacklisted = UserPropertiesManager.GetBlacklistedProperties();
 
-            // Use override if provided (from queued request), otherwise read from PlayerPrefs
-            int? retentionDay = retentionDayOverride;
-            if (!retentionDay.HasValue && PlayerPrefs.HasKey("retentionDay"))
-            {
-                retentionDay = PlayerPrefs.GetInt("retentionDay");
-            }
-
-            var eventId = string.IsNullOrEmpty(eventIdOverride) ? EventIdProvider.GenerateEventId() : eventIdOverride;
             var postData = new WebhookRequestData
             {
-                type = type,
-                event_id = eventId,
-                dedupe_key = dedupeKey,
+                type = request.type,
+                event_id = request.eventId,
+                dedupe_key = request.dedupeKey,
                 created_at = currentDateText,
                 creativeToken = TokenHandler.GetValidToken(),
                 device_name = deviceInfo.DeviceName,
                 device_model = SystemInfo.deviceModel,
                 os_system = deviceInfo.OsVersion,
                 utc_offset = utcOffset,
-                retention_day = retentionDay,
+                retention_day = request.retentionDay,
+                sid = request.sessionId,
+                si = request.sessionIndex,
                 sdk_version = SDKVersion.VERSION,
                 sdk_type = SDKVersion.SDK_TYPE,
                 app_version = SDKVersion.AppVersion,
@@ -312,7 +409,7 @@ namespace Geeklab.AudiencelabSDK
                 limit_ad_tracking = identityInfo.limit_ad_tracking,
                 whitelisted_properties = whitelisted,
                 blacklisted_properties = blacklisted,
-                payload = data
+                payload = request.data
             };
 
             LastWebhookEnvelope = new RequestEnvelopeSnapshot
@@ -324,15 +421,53 @@ namespace Geeklab.AudiencelabSDK
                 android_id = postData.android_id,
                 limit_ad_tracking = postData.limit_ad_tracking,
                 retention_day = postData.retention_day,
-                event_type = type,
-                event_name = eventName,
-                event_id = eventId
+                sid = postData.sid,
+                si = postData.si,
+                event_type = request.type,
+                event_name = request.eventName,
+                event_id = request.eventId
             };
             
             var json = JsonConvert.SerializeObject(postData);
             Debug.Log(json);
-            var meta = new RequestMeta("webhook", type, eventId, eventName);
-            SendRequest(ApiEndpointsModel.WEBHOOK, json, onSuccess, onError, UnityWebRequest.kHttpVerbPOST, null, meta);
+            var meta = new RequestMeta("webhook", request.type, request.eventId, request.eventName);
+
+            if (!TryMarkWebhookInFlight(request.eventId))
+            {
+                var duplicateMessage = $"{SDKSettingsModel.GetColorPrefixLog()} Event already in flight (eventId={request.eventId})";
+                if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
+                {
+                    Debug.Log(duplicateMessage);
+                }
+                onError?.Invoke(duplicateMessage);
+                return;
+            }
+
+            SendRequest(
+                ApiEndpointsModel.WEBHOOK,
+                json,
+                response =>
+                {
+                    ClearWebhookInFlight(request.eventId);
+                    if (IsRetentionEvent(request))
+                    {
+                        UserMetrics.MarkRetentionDeliveryAcknowledged(request.eventId);
+                    }
+                    onSuccess?.Invoke(response);
+                },
+                error =>
+                {
+                    ClearWebhookInFlight(request.eventId);
+                    onError?.Invoke(error);
+                    if (ShouldPersistBeforeSend(request))
+                    {
+                        EnqueueWebhookRequest(request);
+                        ScheduleQueuedWebhookRetry();
+                    }
+                },
+                UnityWebRequest.kHttpVerbPOST,
+                null,
+                meta);
         }
 
         private static bool ShouldWaitForIdentity()
@@ -372,28 +507,41 @@ namespace Geeklab.AudiencelabSDK
             FlushQueuedWebhookRequests();
         }
 
-        private static void EnqueueWebhookRequest(string type, object data, string dedupeKey, string eventName, bool waitForIdentity, string eventIdOverride = null)
+        private void HandleSessionContextAvailable()
+        {
+            StampQueuedEventsWithCurrentSessionContext();
+            FlushQueuedWebhookRequests();
+        }
+
+        private static void EnqueueWebhookRequest(WebhookRequestContext request)
         {
             EnsureQueueLoaded();
 
-            int? retentionDay = null;
-            if (PlayerPrefs.HasKey("retentionDay"))
+            var existingEntry = queuedWebhookRequests.Find(entry => entry.eventId == request.eventId);
+            if (existingEntry != null)
             {
-                retentionDay = PlayerPrefs.GetInt("retentionDay");
+                if (MergeQueuedEntry(existingEntry, request))
+                {
+                    PersistQueue();
+                }
+                return;
             }
 
-            var payloadJson = JsonConvert.SerializeObject(data);
+            var payloadJson = JsonConvert.SerializeObject(request.data);
             var entry = new QueuedWebhookRequest
             {
-                eventId = string.IsNullOrEmpty(eventIdOverride) ? EventIdProvider.GenerateEventId() : eventIdOverride,
-                type = type,
-                dedupeKey = dedupeKey,
-                eventName = eventName,
+                eventId = request.eventId,
+                type = request.type,
+                dedupeKey = request.dedupeKey,
+                eventName = request.eventName,
                 payloadJson = payloadJson,
-                createdAtIso = DateTime.UtcNow.ToString("o"),
-                waitForIdentity = waitForIdentity,
+                createdAtIso = request.createdAt.ToUniversalTime().ToString("o"),
+                waitForIdentity = request.waitForIdentity,
                 sequence = ++queueSequence,
-                retentionDay = retentionDay
+                retentionDay = request.retentionDay,
+                sessionId = request.sessionId,
+                sessionIndex = request.sessionIndex,
+                utcOffset = request.utcOffset
             };
 
             queuedWebhookRequests.Add(entry);
@@ -402,7 +550,7 @@ namespace Geeklab.AudiencelabSDK
 
             if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
             {
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Queued {type} event (eventId={entry.eventId}, retentionDay={retentionDay?.ToString() ?? "null"})");
+                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Queued {request.type} event (eventId={entry.eventId}, retentionDay={request.retentionDay?.ToString() ?? "null"})");
             }
         }
 
@@ -440,18 +588,27 @@ namespace Geeklab.AudiencelabSDK
                         createdAt = parsed.ToUniversalTime();
                     }
 
-                    // Use stored retention_day, but fallback to current PlayerPrefs value if stored is null
-                    var retentionDayForEntry = entry.retentionDay;
-                    if (!retentionDayForEntry.HasValue && PlayerPrefs.HasKey("retentionDay"))
+                    var request = CreateWebhookRequest(
+                        entry.type,
+                        payload,
+                        entry.dedupeKey,
+                        entry.waitForIdentity,
+                        entry.eventName,
+                        entry.eventId,
+                        createdAt,
+                        entry.retentionDay,
+                        entry.sessionId,
+                        entry.sessionIndex,
+                        entry.utcOffset);
+
+                    if (MergeQueuedEntry(entry, request))
                     {
-                        retentionDayForEntry = PlayerPrefs.GetInt("retentionDay");
+                        PersistQueue();
                     }
 
-                    Instance.SendWebhookRequestInternal(entry.type, payload, entry.dedupeKey, entry.waitForIdentity,
-                        entry.eventName, createdAt, entry.eventId,
+                    Instance.SendWebhookRequestInternal(request,
                         _ => RemoveQueuedEntry(entry.eventId),
-                        _ => { },
-                        retentionDayForEntry);
+                        _ => { });
                 }
             }
             finally
@@ -510,6 +667,11 @@ namespace Geeklab.AudiencelabSDK
             var cutoff = DateTime.UtcNow.AddHours(-MaxQueuedAgeHours);
             var removedByAge = queuedWebhookRequests.RemoveAll(entry =>
             {
+                if (IsCriticalQueuedEvent(entry))
+                {
+                    return false;
+                }
+
                 if (string.IsNullOrEmpty(entry.createdAtIso))
                 {
                     return false;
@@ -527,7 +689,8 @@ namespace Geeklab.AudiencelabSDK
             var droppedBySize = 0;
             while (queuedWebhookRequests.Count > MaxQueuedEvents)
             {
-                queuedWebhookRequests.RemoveAt(0);
+                var dropIndex = queuedWebhookRequests.FindIndex(entry => !IsCriticalQueuedEvent(entry));
+                queuedWebhookRequests.RemoveAt(dropIndex >= 0 ? dropIndex : 0);
                 droppedBySize++;
             }
 
@@ -543,6 +706,194 @@ namespace Geeklab.AudiencelabSDK
             return Path.Combine(Application.persistentDataPath, "audiencelab_webhook_queue.json");
         }
 
+        internal static int? GetCurrentRetentionDay()
+        {
+            // Derive the retention day from the persisted first-login date at request-creation
+            // time so every event carries the correct day, even on warm resumes where the
+            // cold-start retention pipeline has not re-run yet.
+            var firstLogin = PlayerPrefs.GetString("firstLogin", "");
+            if (!string.IsNullOrEmpty(firstLogin))
+            {
+                try
+                {
+                    var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
+                    var today = DateTime.ParseExact(DateTime.Now.ToString("dd/MM/yyyy"), "dd/MM/yyyy", null);
+                    return (today - firstLoginDate).Days;
+                }
+                catch (Exception)
+                {
+                    // Fall back to the persisted value below if the stored date is malformed.
+                }
+            }
+
+            if (PlayerPrefs.HasKey("retentionDay"))
+            {
+                return PlayerPrefs.GetInt("retentionDay");
+            }
+
+            return null;
+        }
+
+        private static bool IsRetentionEvent(QueuedWebhookRequest entry)
+        {
+            return entry != null &&
+                   string.Equals(entry.type, "retention", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsRetentionEvent(WebhookRequestContext request)
+        {
+            return request != null &&
+                   string.Equals(request.type, "retention", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSessionEvent(WebhookRequestContext request)
+        {
+            return request != null &&
+                   string.Equals(request.type, "session", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSessionEvent(QueuedWebhookRequest entry)
+        {
+            return entry != null &&
+                   string.Equals(entry.type, "session", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsCriticalQueuedEvent(QueuedWebhookRequest entry)
+        {
+            return IsRetentionEvent(entry) || IsSessionEvent(entry);
+        }
+
+        private static bool ShouldPersistBeforeSend(WebhookRequestContext request)
+        {
+            return IsSessionEvent(request) || IsRetentionEvent(request);
+        }
+
+        private static bool ShouldWaitForSessionContext(WebhookRequestContext request)
+        {
+            return request != null &&
+                   !IsSessionEvent(request) &&
+                   string.IsNullOrEmpty(request.sessionId);
+        }
+
+        private static void ResolveSessionContext(string type, object data, out string sessionId, out int? sessionIndex)
+        {
+            sessionId = null;
+            sessionIndex = null;
+
+            if (TryExtractSessionContextFromPayload(data, out sessionId, out sessionIndex))
+            {
+                return;
+            }
+
+            if (SessionManager.TryGetCurrentSession(out var currentSessionId, out var currentSessionIndex))
+            {
+                sessionId = currentSessionId;
+                sessionIndex = currentSessionIndex;
+            }
+        }
+
+        private static bool TryExtractSessionContextFromPayload(object data, out string sessionId, out int? sessionIndex)
+        {
+            sessionId = null;
+            sessionIndex = null;
+
+            if (data is System.Collections.IDictionary dictionary)
+            {
+                if (!dictionary.Contains("sid"))
+                {
+                    return false;
+                }
+
+                sessionId = dictionary["sid"]?.ToString();
+                sessionIndex = TryConvertToInt(dictionary.Contains("si") ? dictionary["si"] : null);
+                return !string.IsNullOrEmpty(sessionId);
+            }
+
+            if (data is JObject jObject)
+            {
+                sessionId = jObject.Value<string>("sid");
+                sessionIndex = TryConvertToInt(jObject["si"]);
+                return !string.IsNullOrEmpty(sessionId);
+            }
+
+            return false;
+        }
+
+        private static int? TryConvertToInt(object value)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (value is int intValue)
+            {
+                return intValue;
+            }
+
+            if (value is long longValue)
+            {
+                return longValue > int.MaxValue || longValue < int.MinValue ? (int?)null : (int)longValue;
+            }
+
+            if (value is JValue jValue)
+            {
+                return TryConvertToInt(jValue.Value);
+            }
+
+            return int.TryParse(value.ToString(), out var parsed) ? parsed : (int?)null;
+        }
+
+        private static bool MergeQueuedEntry(QueuedWebhookRequest entry, WebhookRequestContext request)
+        {
+            if (entry == null || request == null)
+            {
+                return false;
+            }
+
+            var changed = false;
+            if (string.IsNullOrEmpty(entry.sessionId) && !string.IsNullOrEmpty(request.sessionId))
+            {
+                entry.sessionId = request.sessionId;
+                changed = true;
+            }
+
+            if (!entry.sessionIndex.HasValue && request.sessionIndex.HasValue)
+            {
+                entry.sessionIndex = request.sessionIndex;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        private static void StampQueuedEventsWithCurrentSessionContext()
+        {
+            if (!SessionManager.TryGetCurrentSession(out var sessionId, out var sessionIndex))
+            {
+                return;
+            }
+
+            EnsureQueueLoaded();
+            var changed = false;
+            foreach (var entry in queuedWebhookRequests)
+            {
+                if (entry == null || IsSessionEvent(entry) || !string.IsNullOrEmpty(entry.sessionId))
+                {
+                    continue;
+                }
+
+                entry.sessionId = sessionId;
+                entry.sessionIndex = sessionIndex;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                PersistQueue();
+            }
+        }
+
         private static void RemoveQueuedEntry(string eventId)
         {
             if (string.IsNullOrEmpty(eventId))
@@ -556,6 +907,80 @@ namespace Geeklab.AudiencelabSDK
             {
                 PersistQueue();
             }
+        }
+
+        internal static bool HasQueuedWebhookEvent(string eventId)
+        {
+            if (string.IsNullOrEmpty(eventId))
+            {
+                return false;
+            }
+
+            EnsureQueueLoaded();
+            return queuedWebhookRequests.Exists(entry => entry.eventId == eventId);
+        }
+
+        internal static bool TryGetQueuedRetentionEventId(int retentionDay, out string eventId)
+        {
+            eventId = null;
+            EnsureQueueLoaded();
+
+            var entry = queuedWebhookRequests.Find(queuedEntry =>
+                IsRetentionEvent(queuedEntry) &&
+                queuedEntry.retentionDay.HasValue &&
+                queuedEntry.retentionDay.Value == retentionDay &&
+                !string.IsNullOrEmpty(queuedEntry.eventId));
+
+            if (entry == null)
+            {
+                return false;
+            }
+
+            eventId = entry.eventId;
+            return true;
+        }
+
+        internal static bool IsWebhookInFlight(string eventId)
+        {
+            return !string.IsNullOrEmpty(eventId) && inFlightWebhookEventIds.Contains(eventId);
+        }
+
+        private static bool TryMarkWebhookInFlight(string eventId)
+        {
+            if (string.IsNullOrEmpty(eventId))
+            {
+                return true;
+            }
+
+            return inFlightWebhookEventIds.Add(eventId);
+        }
+
+        private static void ClearWebhookInFlight(string eventId)
+        {
+            if (string.IsNullOrEmpty(eventId))
+            {
+                return;
+            }
+
+            inFlightWebhookEventIds.Remove(eventId);
+        }
+
+        private static void ScheduleQueuedWebhookRetry()
+        {
+            if (isQueueRetryScheduled || !Application.isPlaying || instance == null)
+            {
+                return;
+            }
+
+            instance.StartCoroutine(FlushQueuedWebhookRequestsAfterDelay());
+        }
+
+        private static IEnumerator FlushQueuedWebhookRequestsAfterDelay()
+        {
+            isQueueRetryScheduled = true;
+            yield return new WaitForSeconds(QueueRetryDelaySeconds);
+            isQueueRetryScheduled = false;
+            FlushQueuedWebhookRequests();
         }
 
         private static int CompareQueuedEntries(QueuedWebhookRequest a, QueuedWebhookRequest b)
@@ -612,6 +1037,24 @@ namespace Geeklab.AudiencelabSDK
             public bool waitForIdentity;
             public long sequence;
             public int? retentionDay;
+            public string sessionId;
+            public int? sessionIndex;
+            public string utcOffset;
+        }
+
+        private sealed class WebhookRequestContext
+        {
+            public string eventId;
+            public string type;
+            public string dedupeKey;
+            public string eventName;
+            public object data;
+            public DateTime createdAt;
+            public bool waitForIdentity;
+            public int? retentionDay;
+            public string sessionId;
+            public int? sessionIndex;
+            public string utcOffset;
         }
 
         internal sealed class RequestEnvelopeSnapshot
@@ -623,6 +1066,8 @@ namespace Geeklab.AudiencelabSDK
             public string android_id;
             public bool? limit_ad_tracking;
             public int? retention_day;
+            public string sid;
+            public int? si;
             public string event_type;
             public string event_name;
             public string event_id;

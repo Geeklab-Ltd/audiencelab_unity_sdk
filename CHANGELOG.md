@@ -5,6 +5,21 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2026-05-14
+
+### Changed
+
+- Improved event timeline consistency during SDK startup and token resolution.
+- Improved event delivery consistency across app restarts, scene reloads, and temporary connectivity changes.
+- Improved session context consistency in webhook payloads so events can be associated with the active session regardless of delivery timing.
+- Improved startup token readiness before event delivery.
+
+### Fixed
+
+- Improved retention event consistency and reduced the chance of duplicate retention reporting.
+- Improved webhook retry behavior so event metadata remains stable across delivery attempts.
+- Improved startup and lifecycle handling to make SDK initialization more resilient.
+
 ## [1.1.7] - 2026-05-04
 
 ### Fixed

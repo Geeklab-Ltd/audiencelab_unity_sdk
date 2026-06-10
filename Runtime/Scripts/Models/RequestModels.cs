@@ -72,6 +72,8 @@ namespace Geeklab.AudiencelabSDK
         public string os_system;
         public string utc_offset;
         public int? retention_day;
+        public string sid;
+        public int? si;
         public string sdk_version;
         public string sdk_type;
         public string app_version;
@@ -93,4 +95,4 @@ namespace Geeklab.AudiencelabSDK
         public Dictionary<string, object> blacklisted_properties;
         public object payload;
     }
-} 
+}

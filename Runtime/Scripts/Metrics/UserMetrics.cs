@@ -7,39 +7,55 @@ namespace Geeklab.AudiencelabSDK
 {
     public class UserMetrics : MonoBehaviour
     {
+        private const string RetentionGuardDayKey = "GeeklabSDK_RetentionGuardDay";
+        private const string RetentionGuardEventIdKey = "GeeklabSDK_RetentionGuardEventId";
+        private const string RetentionGuardStateKey = "GeeklabSDK_RetentionGuardState";
+        private const string RetentionStateQueued = "queued";
+        private const string RetentionStateAcknowledged = "acknowledged";
+        private const string RetentionStateFailedRetryable = "failed_retryable";
+
+        private static UserMetrics instance;
+
+        private void Awake()
+        {
+            if (instance != null && instance != this)
+            {
+                Destroy(this);
+                return;
+            }
+
+            instance = this;
+        }
+
         private void Start()
         {
-            // Initialize firstLogin and calculate retentionDay early (doesn't require token)
-            // This ensures retentionDay is available for any events that get queued before token arrives
+            if (instance != this)
+                return;
+
+            TrackRetentionOnStartup();
+        }
+
+        internal static void TrackRetentionOnStartup()
+        {
+            PrepareRetentionOnStartup();
+            UpdateRetention();
+        }
+
+        internal static void PrepareRetentionOnStartup()
+        {
             if (string.IsNullOrEmpty(PlayerPrefs.GetString("firstLogin")))
             {
                 InitializeFirstLogin();
             }
             EnsureRetentionDayCalculated();
-
-            // Check if token already exists
-            if (TokenHandler.HasValidToken())
-            {
-                Debug.Log("Creative token found");
-                UpdateRetention();
-            }
-            else
-            {
-                // Subscribe to token available event instead of polling
-                TokenHandler.OnTokenAvailable += HandleTokenAvailable;
-            }
         }
 
         private void OnDestroy()
         {
-            TokenHandler.OnTokenAvailable -= HandleTokenAvailable;
-        }
-
-        private void HandleTokenAvailable(string token)
-        {
-            TokenHandler.OnTokenAvailable -= HandleTokenAvailable;
-            Debug.Log("Creative token now available");
-            UpdateRetention();
+            if (instance == this)
+            {
+                instance = null;
+            }
         }
 
         /// <summary>
@@ -72,6 +88,7 @@ namespace Geeklab.AudiencelabSDK
         {
             PlayerPrefs.SetString("firstLogin", DateTime.Now.ToString("dd/MM/yyyy"));
             PlayerPrefs.SetString("lastLogin", DateTime.Now.ToString("dd/MM/yyyy"));
+            PlayerPrefs.Save();
         }
 
 
@@ -79,10 +96,6 @@ namespace Geeklab.AudiencelabSDK
         public static void UpdateRetention()
         {
             var today = DateTime.Now.ToString("dd/MM/yyyy");
-            if (PlayerPrefs.GetString("lastSentMetricDate") == today)
-            {
-                return;
-            }
             var lastLogin = PlayerPrefs.GetString("lastLogin");
             var firstLogin = PlayerPrefs.GetString("firstLogin");
             var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
@@ -103,17 +116,67 @@ namespace Geeklab.AudiencelabSDK
             daysBetween = (todayDate - firstLoginDate).Days;
             PlayerPrefs.SetInt("retentionDay", daysBetween);
 
+            var existingEventId = PlayerPrefs.GetString(RetentionGuardEventIdKey, "");
+            var existingState = PlayerPrefs.GetString(RetentionGuardStateKey, "");
+            var hasExistingRetentionDay = PlayerPrefs.HasKey(RetentionGuardDayKey);
+            var existingRetentionDay = PlayerPrefs.GetInt(RetentionGuardDayKey, -1);
+            var hasSameRetentionGuard = hasExistingRetentionDay && existingRetentionDay == daysBetween;
+
+            if (!hasSameRetentionGuard &&
+                WebRequestManager.TryGetQueuedRetentionEventId(daysBetween, out var queuedRetentionEventId))
+            {
+                existingEventId = queuedRetentionEventId;
+                existingState = RetentionStateQueued;
+                hasExistingRetentionDay = true;
+                existingRetentionDay = daysBetween;
+                hasSameRetentionGuard = true;
+                PlayerPrefs.SetInt(RetentionGuardDayKey, daysBetween);
+                PlayerPrefs.SetString(RetentionGuardEventIdKey, existingEventId);
+                PlayerPrefs.SetString(RetentionGuardStateKey, RetentionStateQueued);
+                PlayerPrefs.SetString("lastSentMetricDate", today);
+            }
+
+            var hasExistingLogicalEvent = hasSameRetentionGuard && !string.IsNullOrEmpty(existingEventId);
+            var isAcknowledgedExistingEvent = hasSameRetentionGuard &&
+                                              existingState == RetentionStateAcknowledged;
+            var isQueuedExistingEvent = hasExistingLogicalEvent &&
+                                        existingState == RetentionStateQueued;
+            var isRetryableExistingEvent = hasExistingLogicalEvent &&
+                                           (existingState == RetentionStateFailedRetryable ||
+                                            (isQueuedExistingEvent &&
+                                             !WebRequestManager.HasQueuedWebhookEvent(existingEventId) &&
+                                             !WebRequestManager.IsWebhookInFlight(existingEventId)));
+
+            if (isAcknowledgedExistingEvent ||
+                (isQueuedExistingEvent && !isRetryableExistingEvent))
+            {
+                PlayerPrefs.Save();
+                return;
+            }
+
+            if (!isRetryableExistingEvent && PlayerPrefs.GetString("lastSentMetricDate") == today)
+            {
+                PlayerPrefs.Save();
+                return;
+            }
+
             var backfillDay = PlayerPrefs.GetInt("backfillDay").ToString();
             var retentionDay = PlayerPrefs.GetInt("retentionDay").ToString();
+            var eventId = isRetryableExistingEvent ? existingEventId : EventIdProvider.GenerateEventId();
 
             var data = WebhookPayloadFactory.CreateRetention(retentionDay, backfillDay);
-        
+
+            PlayerPrefs.SetInt(RetentionGuardDayKey, daysBetween);
+            PlayerPrefs.SetString(RetentionGuardEventIdKey, eventId);
+            PlayerPrefs.SetString(RetentionGuardStateKey, RetentionStateQueued);
             PlayerPrefs.SetString("lastSentMetricDate", today);
-            _ = SendMetrics(data);
+            PlayerPrefs.Save();
+
+            _ = SendMetrics(data, eventId);
         }
         
         
-        public static async Task<bool> SendMetrics(object postData = null)
+        public static async Task<bool> SendMetrics(object postData = null, string eventId = null, string dedupeKey = null)
         {
             if (!SDKSettingsModel.Instance.SendStatistics) 
                 return false;
@@ -121,22 +184,41 @@ namespace Geeklab.AudiencelabSDK
             var taskCompletionSource = new TaskCompletionSource<bool>();
             Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Send metrics");
             Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} {postData}");
-            WebRequestManager.Instance.SendUserMetricsRequest(postData,
+            WebRequestManager.Instance.SendUserMetricsRequestWithContext(postData, eventId, dedupeKey,
                 (response) =>
                 {
                     if (SDKSettingsModel.Instance.ShowDebugLog)
                         Debug.Log(
                             $"{SDKSettingsModel.GetColorPrefixLog()} {response}");
+                    MarkRetentionState(eventId, RetentionStateAcknowledged);
                     taskCompletionSource.SetResult(true);
                 },
                 (error) =>
                 {
                     Debug.LogError(error);
+                    MarkRetentionState(eventId, RetentionStateFailedRetryable);
                     taskCompletionSource.SetResult(false);
                 }
             );
             
             return await taskCompletionSource.Task;
+        }
+
+        private static void MarkRetentionState(string eventId, string state)
+        {
+            if (string.IsNullOrEmpty(eventId))
+                return;
+
+            if (PlayerPrefs.GetString(RetentionGuardEventIdKey, "") != eventId)
+                return;
+
+            PlayerPrefs.SetString(RetentionGuardStateKey, state);
+            PlayerPrefs.Save();
+        }
+
+        internal static void MarkRetentionDeliveryAcknowledged(string eventId)
+        {
+            MarkRetentionState(eventId, RetentionStateAcknowledged);
         }
     }
 }

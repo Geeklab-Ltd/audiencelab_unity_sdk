@@ -64,12 +64,23 @@ namespace Geeklab.AudiencelabSDK
             }
             else
             {
-                Destroy(gameObject);
+                Destroy(this);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (instance == this)
+            {
+                instance = null;
             }
         }
 
         private void Update()
         {
+            if (instance != this)
+                return;
+
             if (!collectionStarted || collectionComplete)
                 return;
 

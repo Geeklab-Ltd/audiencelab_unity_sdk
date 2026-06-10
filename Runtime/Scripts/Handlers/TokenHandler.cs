@@ -31,7 +31,10 @@ namespace Geeklab.AudiencelabSDK
         
         private void Start()
         {
-            CheckToken();
+            if (instance != this)
+                return;
+
+            EnsureTokenAvailabilityStarted();
         }
 
         private void Awake()
@@ -40,11 +43,17 @@ namespace Geeklab.AudiencelabSDK
             {
                 instance = this;
                 DontDestroyOnLoad(gameObject);
+                return;
             }
+
+            Destroy(this);
         }
 
         private void OnApplicationQuit()
         {
+            if (instance != this)
+                return;
+
             retryCancellation?.Cancel();
         }
 
@@ -53,6 +62,7 @@ namespace Geeklab.AudiencelabSDK
             if (instance == this)
             {
                 retryCancellation?.Cancel();
+                instance = null;
             }
         }
         
@@ -75,6 +85,16 @@ namespace Geeklab.AudiencelabSDK
             }
 
             StartRetryLoop();
+        }
+
+        internal static void EnsureTokenAvailabilityStarted()
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            instance.CheckToken();
         }
         
         

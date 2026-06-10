@@ -11,6 +11,7 @@ public class AudiencelabSDK : MonoBehaviour
         private bool showServiceInHierarchy;
 
         private static AudiencelabSDK instance;
+        private static bool managersCreated;
         public static AudiencelabSDK Instance => Initialize();
 
         private static AudiencelabSDK Initialize()
@@ -24,7 +25,6 @@ public class AudiencelabSDK : MonoBehaviour
             
             var gameObject = new GameObject("AudiencelabSDK");
             instance = gameObject.AddComponent<AudiencelabSDK>();
-            DontDestroyOnLoad(gameObject);
             return instance;
         }
         
@@ -39,14 +39,36 @@ public class AudiencelabSDK : MonoBehaviour
         
         private void Awake()
         {
+            if (instance != null && instance != this)
+            {
+                Destroy(this);
+                return;
+            }
+
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+
             if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
                 Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} SDK Initialized!");
+
+            if (managersCreated)
+                return;
+
+            managersCreated = true;
             
             //------Init All Managers and hide them------//
             var serviceLocator = new GameObject("ServiceLocator");
             serviceLocator.AddComponent<ServiceManager>();
             serviceLocator.hideFlags = showServiceInHierarchy ? serviceLocator.hideFlags : HideFlags.HideInHierarchy;
             gameObject.hideFlags = showServiceInHierarchy ? gameObject.hideFlags : HideFlags.HideInHierarchy;
+        }
+
+        private void OnDestroy()
+        {
+            if (instance == this)
+            {
+                instance = null;
+            }
         }
         
         /// <summary>

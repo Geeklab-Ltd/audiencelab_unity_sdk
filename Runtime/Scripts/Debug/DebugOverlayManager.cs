@@ -143,7 +143,7 @@ namespace Geeklab.AudiencelabSDK
             if (envelope != null)
             {
                 GUILayout.Label($"envelope gaid: {Presence(envelope.gaid)} | app_set_id: {Presence(envelope.app_set_id)} | android_id: {Presence(envelope.android_id)} | lat: {Presence(envelope.limit_ad_tracking?.ToString())}");
-                GUILayout.Label($"envelope retention_day: {(envelope.retention_day.HasValue ? envelope.retention_day.Value.ToString() : "n/a")}");
+                GUILayout.Label($"envelope retention_day: {(envelope.retention_day.HasValue ? envelope.retention_day.Value.ToString() : "n/a")} | sid: {Truncate(envelope.sid, 8)} | si: {(envelope.si.HasValue ? envelope.si.Value.ToString() : "n/a")}");
             }
 
             if (settings.showRawIdentifiers)
@@ -159,7 +159,7 @@ namespace Geeklab.AudiencelabSDK
             GUILayout.BeginHorizontal();
 
             GUILayout.BeginVertical(GUILayout.Width(380));
-            GUILayout.Label("Recent Events", EditorHeaderStyle());
+            GUILayout.Label("Recent Events (newest first)", EditorHeaderStyle());
             eventsScrollPosition = GUILayout.BeginScrollView(eventsScrollPosition, GUILayout.ExpandHeight(true));
             for (var i = 0; i < entries.Count; i++)
             {
