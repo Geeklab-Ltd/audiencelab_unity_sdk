@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -34,6 +35,19 @@ namespace Geeklab.AudiencelabSDK
             }
         }
 
+        internal static bool IsCollectionFinished
+        {
+            get
+            {
+                if (instance == null || !instance.collectionStarted)
+                    return false;
+
+                return instance.collectionComplete ||
+                       Time.realtimeSinceStartup - instance.collectionStartTime >=
+                       IdentitySettleTimeoutSeconds;
+            }
+        }
+
         public static IdentityInfoModel Current
         {
             get
@@ -42,16 +56,61 @@ namespace Geeklab.AudiencelabSDK
                     return new IdentityInfoModel();
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-                // Ensure we read the final identity values if collection is complete
-                if (instance.collectionComplete && !instance.hasReadFinalIdentity)
+                // Ensure a caller receives the final native values even when the settle timeout
+                // is observed between Unity Update callbacks.
+                if (!instance.hasReadFinalIdentity && IsCollectionFinished)
                 {
                     instance.TryUpdateIdentityFromAndroid();
                     instance.hasReadFinalIdentity = true;
+                    instance.collectionComplete = true;
                 }
 #endif
 
                 return instance.identityInfo;
             }
+        }
+
+        internal static IReadOnlyList<AudienceLabIdentifier> GetIdentifiersSnapshot()
+        {
+            var current = Current;
+            var identifiers = new List<AudienceLabIdentifier>(4);
+
+            AddIdentifier(identifiers, "ifv", current.idfv);
+            AddIdentifier(identifiers, "ga", current.gaid);
+            AddIdentifier(identifiers, "asid", current.app_set_id);
+            AddIdentifier(identifiers, "aid", current.android_id);
+
+            return identifiers;
+        }
+
+        private static void AddIdentifier(
+            ICollection<AudienceLabIdentifier> identifiers,
+            string type,
+            string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            var normalized = value.Trim();
+            if (type == "ga" && IsAllZeroIdentifier(normalized))
+                return;
+
+            identifiers.Add(new AudienceLabIdentifier(type, normalized));
+        }
+
+        private static bool IsAllZeroIdentifier(string value)
+        {
+            var raw = value.Replace("-", "");
+            if (raw.Length == 0)
+                return true;
+
+            foreach (var character in raw)
+            {
+                if (character != '0')
+                    return false;
+            }
+
+            return true;
         }
 
         private void Awake()
@@ -111,12 +170,20 @@ namespace Geeklab.AudiencelabSDK
         {
             if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
             {
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Identity settled ({reason}): gaid={identityInfo.gaid ?? "null"}, app_set_id={identityInfo.app_set_id ?? "null"}, android_id={identityInfo.android_id ?? "null"}, idfv={identityInfo.idfv ?? "null"}");
+                Debug.Log(
+                    $"{SDKSettingsModel.GetColorPrefixLog()} Identity settled ({reason}): " +
+                    $"gaid={Presence(identityInfo.gaid)}, app_set_id={Presence(identityInfo.app_set_id)}, " +
+                    $"android_id={Presence(identityInfo.android_id)}, idfv={Presence(identityInfo.idfv)}");
             }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
             WarnIfIdentityMissing();
 #endif
+        }
+
+        private static string Presence(string value)
+        {
+            return string.IsNullOrEmpty(value) ? "missing" : "available";
         }
 
 #if UNITY_ANDROID && !UNITY_EDITOR

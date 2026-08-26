@@ -196,7 +196,12 @@ namespace Geeklab.AudiencelabSDK
 
             if (SDKSettingsModel.Instance != null && SDKSettingsModel.Instance.ShowDebugLog)
             {
-                Debug.Log($"{SDKSettingsModel.GetColorPrefixLog()} Sending fetch-token with identity: gaid={identityInfo.gaid ?? "null"}, app_set_id={identityInfo.app_set_id ?? "null"}, android_id={identityInfo.android_id ?? "null"}, idfv={identityInfo.idfv ?? "null"}");
+                Debug.Log(
+                    $"{SDKSettingsModel.GetColorPrefixLog()} Sending fetch-token with identity: " +
+                    $"gaid={!string.IsNullOrEmpty(identityInfo.gaid)}, " +
+                    $"app_set_id={!string.IsNullOrEmpty(identityInfo.app_set_id)}, " +
+                    $"android_id={!string.IsNullOrEmpty(identityInfo.android_id)}, " +
+                    $"idfv={!string.IsNullOrEmpty(identityInfo.idfv)}");
             }
             
             var postData = new DeviceMetricsData
@@ -461,6 +466,9 @@ namespace Geeklab.AudiencelabSDK
                     onError?.Invoke(error);
                     if (ShouldPersistBeforeSend(request))
                     {
+                        // Webhook delivery is intentionally at least once: a transport failure
+                        // can occur after the server accepted the request. Keep the same event ID
+                        // on every retry so the receiver can handle it idempotently.
                         EnqueueWebhookRequest(request);
                         ScheduleQueuedWebhookRetry();
                     }
@@ -554,8 +562,31 @@ namespace Geeklab.AudiencelabSDK
             }
         }
 
+        internal static void FlushQueuedWebhookRequestsIfAllowed()
+        {
+            if (!Application.isPlaying || !CanSendMetrics())
+            {
+                return;
+            }
+
+            FlushQueuedWebhookRequests();
+        }
+
+        private static bool CanSendMetrics()
+        {
+            var settings = SDKSettingsModel.Instance;
+            return settings != null &&
+                   settings.IsSDKEnabled &&
+                   settings.SendStatistics;
+        }
+
         private static void FlushQueuedWebhookRequests()
         {
+            if (!CanSendMetrics())
+            {
+                return;
+            }
+
             if (!TokenHandler.HasValidToken())
             {
                 return;
@@ -711,27 +742,34 @@ namespace Geeklab.AudiencelabSDK
             // Derive the retention day from the persisted first-login date at request-creation
             // time so every event carries the correct day, even on warm resumes where the
             // cold-start retention pipeline has not re-run yet.
-            var firstLogin = PlayerPrefs.GetString("firstLogin", "");
-            if (!string.IsNullOrEmpty(firstLogin))
-            {
-                try
-                {
-                    var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
-                    var today = DateTime.ParseExact(DateTime.Now.ToString("dd/MM/yyyy"), "dd/MM/yyyy", null);
-                    return (today - firstLoginDate).Days;
-                }
-                catch (Exception)
-                {
-                    // Fall back to the persisted value below if the stored date is malformed.
-                }
-            }
-
+            var today = DateTime.Now.Date;
+            int? storedRetentionDay = null;
             if (PlayerPrefs.HasKey("retentionDay"))
             {
-                return PlayerPrefs.GetInt("retentionDay");
+                var storedValue = PlayerPrefs.GetInt("retentionDay");
+                if (RetentionDateStorage.IsPlausibleElapsedDays(storedValue, today))
+                {
+                    storedRetentionDay = storedValue;
+                }
             }
 
-            return null;
+            var firstLogin = PlayerPrefs.GetString("firstLogin", "");
+            if (!string.IsNullOrEmpty(firstLogin) &&
+                RetentionDateStorage.TryParse(firstLogin, out var firstLoginDate))
+            {
+                if (RetentionDateStorage.TryCalculateElapsedDays(
+                        firstLoginDate,
+                        today,
+                        out var retentionDay))
+                {
+                    return RetentionDateStorage.PreserveMonotonicElapsedDays(
+                        retentionDay,
+                        storedRetentionDay,
+                        today);
+                }
+            }
+
+            return storedRetentionDay;
         }
 
         private static bool IsRetentionEvent(QueuedWebhookRequest entry)

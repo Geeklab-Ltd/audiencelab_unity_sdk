@@ -195,6 +195,45 @@ double totalPurchaseValue = AudiencelabSDK.GetTotalPurchaseValue();
 Debug.Log($"User has spent ${totalPurchaseValue:F2} in total purchases");
 ```
 
+## Hybrid Unity and Server-Side Integration
+
+Unity registers the installation and its available platform identifiers with AudienceLab. A
+customer backend can then use one of those identifiers with a dynamic Node.js or Python SDK
+integration to send server-side events for the same installation.
+
+Use the asynchronous API so Android identity collection has time to settle:
+
+```csharp
+using Geeklab.AudiencelabSDK;
+
+AudienceLabIdentifier identifier =
+    await AudiencelabSDK.GetPreferredIdentifierAsync();
+
+if (identifier != null)
+{
+    // Send these values to your own authenticated backend over HTTPS.
+    // identifier.Type is one of: "ifv", "ga", "asid", or "aid".
+    SendIdentifierToBackend(identifier.Type, identifier.Value);
+}
+```
+
+To inspect every available identifier instead of applying the SDK's preference order:
+
+```csharp
+IReadOnlyList<AudienceLabIdentifier> identifiers =
+    await AudiencelabSDK.GetIdentifiersAsync();
+```
+
+The selection is platform-specific: iOS uses IDFV (`ifv`), while Android prefers GAID (`ga`),
+then App Set ID (`asid`), then Android ID (`aid`). IDFA is not returned by this version. `GetIdentifiers()` and
+`GetPreferredIdentifier()` are non-blocking snapshots and can be empty during startup.
+
+Do not send the first server-side event until Unity registration has completed successfully
+(that is, `GetCreativeToken()` returns a value). Unknown identities are rejected by the dynamic
+integration rather than registered as organic. Treat identifier values as sensitive data: send
+them only to your authenticated backend, scope their use to the correct AudienceLab API key,
+and do not write raw values to logs.
+
 ### Version Information Functions
 
 The SDK provides several methods to access version information for both the app and the SDK itself.

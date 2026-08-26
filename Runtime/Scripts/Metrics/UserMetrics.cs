@@ -15,6 +15,7 @@ namespace Geeklab.AudiencelabSDK
         private const string RetentionStateFailedRetryable = "failed_retryable";
 
         private static UserMetrics instance;
+        private bool startupRetentionTracked;
 
         private void Awake()
         {
@@ -37,12 +38,18 @@ namespace Geeklab.AudiencelabSDK
 
         internal static void TrackRetentionOnStartup()
         {
+            if (instance == null || instance.startupRetentionTracked)
+                return;
+
+            instance.startupRetentionTracked = true;
             PrepareRetentionOnStartup();
             UpdateRetention();
         }
 
         internal static void PrepareRetentionOnStartup()
         {
+            RetentionDateStorage.NormalizeStoredDates();
+
             if (string.IsNullOrEmpty(PlayerPrefs.GetString("firstLogin")))
             {
                 InitializeFirstLogin();
@@ -68,26 +75,30 @@ namespace Geeklab.AudiencelabSDK
             if (string.IsNullOrEmpty(firstLogin))
                 return;
 
-            try
+            if (!RetentionDateStorage.TryParse(firstLogin, out var firstLoginDate))
+                return;
+
+            var todayDate = DateTime.Now.Date;
+            if (!RetentionDateStorage.TryCalculateElapsedDays(
+                    firstLoginDate,
+                    todayDate,
+                    out var daysBetween))
             {
-                var today = DateTime.Now.ToString("dd/MM/yyyy");
-                var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
-                var todayDate = DateTime.ParseExact(today, "dd/MM/yyyy", null);
-                var daysBetween = (todayDate - firstLoginDate).Days;
-                PlayerPrefs.SetInt("retentionDay", daysBetween);
-                PlayerPrefs.Save();
+                return;
             }
-            catch (Exception)
-            {
-                // Ignore parsing errors - retentionDay will remain unset
-            }
+
+            daysBetween = PreserveMonotonicRetentionDay(daysBetween, todayDate);
+
+            PlayerPrefs.SetInt("retentionDay", daysBetween);
+            PlayerPrefs.Save();
         }
 
 
         public static void InitializeFirstLogin()
         {
-            PlayerPrefs.SetString("firstLogin", DateTime.Now.ToString("dd/MM/yyyy"));
-            PlayerPrefs.SetString("lastLogin", DateTime.Now.ToString("dd/MM/yyyy"));
+            var today = RetentionDateStorage.FormatTodayLocal();
+            PlayerPrefs.SetString("firstLogin", today);
+            PlayerPrefs.SetString("lastLogin", today);
             PlayerPrefs.Save();
         }
 
@@ -95,25 +106,59 @@ namespace Geeklab.AudiencelabSDK
 
         public static void UpdateRetention()
         {
-            var today = DateTime.Now.ToString("dd/MM/yyyy");
+            RetentionDateStorage.NormalizeStoredDates();
+
+            var today = RetentionDateStorage.FormatTodayLocal();
             var lastLogin = PlayerPrefs.GetString("lastLogin");
             var firstLogin = PlayerPrefs.GetString("firstLogin");
-            var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
+
+            if (!RetentionDateStorage.TryParse(firstLogin, out var firstLoginDate))
+            {
+                Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Invalid firstLogin date '{firstLogin}'; skipping retention update.");
+                return;
+            }
+
             var daysBetween = 0;
 
             if (lastLogin != today)
             {
-                var lastLoginDate = DateTime.ParseExact(lastLogin, "dd/MM/yyyy", null);
-                daysBetween = (lastLoginDate - firstLoginDate).Days;
-                PlayerPrefs.SetInt("backfillDay", daysBetween);
-                PlayerPrefs.SetString("lastLogin", DateTime.Now.ToString("dd/MM/yyyy"));
+                if (RetentionDateStorage.TryParse(lastLogin, out var lastLoginDate))
+                {
+                    if (RetentionDateStorage.TryCalculateElapsedDays(
+                            firstLoginDate,
+                            lastLoginDate,
+                            out daysBetween))
+                    {
+                        PlayerPrefs.SetInt("backfillDay", daysBetween);
+                    }
+                    else
+                    {
+                        PlayerPrefs.SetInt("backfillDay", 0);
+                    }
+                }
+                else
+                {
+                    PlayerPrefs.SetInt("backfillDay", 0);
+                }
+
+                PlayerPrefs.SetString("lastLogin", today);
             } else {
                 PlayerPrefs.SetInt("backfillDay", 0);
             }
-            
 
-            var todayDate = DateTime.ParseExact(today, "dd/MM/yyyy", null);
-            daysBetween = (todayDate - firstLoginDate).Days;
+
+            var todayDate = DateTime.Now.Date;
+            if (!RetentionDateStorage.TryCalculateElapsedDays(
+                    firstLoginDate,
+                    todayDate,
+                    out daysBetween))
+            {
+                Debug.LogWarning($"{SDKSettingsModel.GetColorPrefixLog()} Implausible firstLogin date; skipping retention update.");
+                return;
+            }
+
+            daysBetween = PreserveMonotonicRetentionDay(daysBetween, todayDate);
+
             PlayerPrefs.SetInt("retentionDay", daysBetween);
 
             var existingEventId = PlayerPrefs.GetString(RetentionGuardEventIdKey, "");
@@ -139,16 +184,16 @@ namespace Geeklab.AudiencelabSDK
             var hasExistingLogicalEvent = hasSameRetentionGuard && !string.IsNullOrEmpty(existingEventId);
             var isAcknowledgedExistingEvent = hasSameRetentionGuard &&
                                               existingState == RetentionStateAcknowledged;
-            var isQueuedExistingEvent = hasExistingLogicalEvent &&
-                                        existingState == RetentionStateQueued;
+            var hasPendingExistingEvent = hasExistingLogicalEvent &&
+                                          (WebRequestManager.HasQueuedWebhookEvent(existingEventId) ||
+                                           WebRequestManager.IsWebhookInFlight(existingEventId));
             var isRetryableExistingEvent = hasExistingLogicalEvent &&
+                                           !hasPendingExistingEvent &&
                                            (existingState == RetentionStateFailedRetryable ||
-                                            (isQueuedExistingEvent &&
-                                             !WebRequestManager.HasQueuedWebhookEvent(existingEventId) &&
-                                             !WebRequestManager.IsWebhookInFlight(existingEventId)));
+                                            existingState == RetentionStateQueued);
 
             if (isAcknowledgedExistingEvent ||
-                (isQueuedExistingEvent && !isRetryableExistingEvent))
+                hasPendingExistingEvent)
             {
                 PlayerPrefs.Save();
                 return;
@@ -219,6 +264,20 @@ namespace Geeklab.AudiencelabSDK
         internal static void MarkRetentionDeliveryAcknowledged(string eventId)
         {
             MarkRetentionState(eventId, RetentionStateAcknowledged);
+        }
+
+        private static int PreserveMonotonicRetentionDay(int calculatedDays, DateTime currentLocalDate)
+        {
+            int? persistedDays = null;
+            if (PlayerPrefs.HasKey("retentionDay"))
+            {
+                persistedDays = PlayerPrefs.GetInt("retentionDay");
+            }
+
+            return RetentionDateStorage.PreserveMonotonicElapsedDays(
+                calculatedDays,
+                persistedDays,
+                currentLocalDate);
         }
     }
 }

@@ -88,6 +88,63 @@ public class AudiencelabSDK : MonoBehaviour
         {
             return DeepLinkHandler.GetDeepLink();
         }
+
+        /// <summary>
+        /// Get the identifiers collected so far, using the canonical identity types accepted
+        /// by AudienceLab dynamic SDK integrations. The returned list is a snapshot and may be
+        /// empty while platform identity collection is still in progress.
+        /// </summary>
+        public static IReadOnlyList<AudienceLabIdentifier> GetIdentifiers()
+        {
+            if (Initialize() == null)
+            {
+                return new List<AudienceLabIdentifier>();
+            }
+
+            return IdentityHandler.GetIdentifiersSnapshot();
+        }
+
+        /// <summary>
+        /// Wait for platform identity collection to settle, then return all available identifiers.
+        /// This waits for local collection only; callers must also wait for Unity registration to
+        /// complete before sending server-side events for a newly installed app.
+        /// </summary>
+        public static async Task<IReadOnlyList<AudienceLabIdentifier>> GetIdentifiersAsync()
+        {
+            if (Initialize() == null)
+            {
+                return new List<AudienceLabIdentifier>();
+            }
+
+            while (!IdentityHandler.IsCollectionFinished)
+            {
+                await Task.Yield();
+            }
+
+            return IdentityHandler.GetIdentifiersSnapshot();
+        }
+
+        /// <summary>
+        /// Get the preferred currently available identifier for a hybrid integration.
+        /// This selects IDFV on iOS. On Android it prefers GAID, then App Set ID,
+        /// then Android ID.
+        /// </summary>
+        public static AudienceLabIdentifier GetPreferredIdentifier()
+        {
+            var identifiers = GetIdentifiers();
+            return identifiers.Count > 0 ? identifiers[0] : null;
+        }
+
+        /// <summary>
+        /// Wait for platform identity collection to settle, then get the preferred identifier.
+        /// This selects IDFV on iOS. On Android it prefers GAID, then App Set ID,
+        /// then Android ID.
+        /// </summary>
+        public static async Task<AudienceLabIdentifier> GetPreferredIdentifierAsync()
+        {
+            var identifiers = await GetIdentifiersAsync();
+            return identifiers.Count > 0 ? identifiers[0] : null;
+        }
         
         /// <summary>
         /// Enable or disable metrics collection.
@@ -95,8 +152,18 @@ public class AudiencelabSDK : MonoBehaviour
         /// <param name="isEnabled">A flag indicating whether to enable metrics collection</param>
         public static void ToggleMetricsCollection(bool isEnabled)
         {
-            if (SDKSettingsModel.Instance != null)
-                SDKSettingsModel.Instance.SendStatistics = isEnabled;
+            var settings = SDKSettingsModel.Instance;
+            if (settings == null)
+                return;
+
+            var wasEnabled = settings.SendStatistics;
+            settings.SendStatistics = isEnabled;
+
+            if (isEnabled && !wasEnabled)
+            {
+                TokenHandler.StartRetryLoop();
+                WebRequestManager.FlushQueuedWebhookRequestsIfAllowed();
+            }
         }
         
         /// <summary>

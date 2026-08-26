@@ -457,17 +457,18 @@ namespace Geeklab.AudiencelabSDK
                 return null;
             }
 
-            try
-            {
-                var firstLoginDate = DateTime.ParseExact(firstLogin, "dd/MM/yyyy", null);
-                var sessionStartLocalDate = sessionStartUtc.ToLocalTime().Date;
-                var days = (sessionStartLocalDate - firstLoginDate).Days;
-                return days >= 0 ? days : (int?)null;
-            }
-            catch (Exception)
+            if (!RetentionDateStorage.TryParse(firstLogin, out var firstLoginDate))
             {
                 return null;
             }
+
+            var sessionStartLocalDate = sessionStartUtc.ToLocalTime().Date;
+            return RetentionDateStorage.TryCalculateElapsedDays(
+                firstLoginDate,
+                sessionStartLocalDate,
+                out var days)
+                ? days
+                : (int?)null;
         }
     }
 }

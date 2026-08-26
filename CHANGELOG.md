@@ -5,6 +5,22 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.1.9] - 2026-08-25
+
+### Added
+
+- Added public synchronous and asynchronous APIs for retrieving typed device identifiers for hybrid Unity and server-side integrations.
+
+### Changed
+
+- Queued events now remain paused while metrics collection is disabled and resume when collection is re-enabled.
+- Routine identity debug messages now report identifier availability without logging raw stable identifier values.
+
+### Fixed
+
+- Retention date storage now uses culture-invariant ISO `yyyy-MM-dd` formatting, recovers unambiguous legacy calendar dates after a locale change, bounds monotonic time-zone protection to two days, and runs cold-start retention only once per SDK instance.
+- The development debug overlay now supports projects configured to use Unity's Input System without the legacy Input Manager.
+
 ## [1.1.8] - 2026-05-14
 
 ### Changed

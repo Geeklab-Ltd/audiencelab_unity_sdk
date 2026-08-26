@@ -43,7 +43,7 @@ namespace Geeklab.AudiencelabSDK
             if (settings == null)
                 return;
 
-            if (Input.GetKeyDown(settings.debugOverlayToggleKey))
+            if (ToggleKeyPressedThisFrame(settings.debugOverlayToggleKey))
             {
                 isVisible = !isVisible;
             }
@@ -56,13 +56,14 @@ namespace Geeklab.AudiencelabSDK
 
         private bool IsFiveFingerToggleTriggered()
         {
-            if (Input.touchCount == 0)
+            var touchCount = GetActiveTouchCount();
+            if (touchCount == 0)
             {
                 wasFiveFingerTouchActive = false;
                 return false;
             }
 
-            if (Input.touchCount >= 5)
+            if (touchCount >= 5)
             {
                 if (!wasFiveFingerTouchActive)
                 {
@@ -73,6 +74,123 @@ namespace Geeklab.AudiencelabSDK
 
             return false;
         }
+
+        private static bool ToggleKeyPressedThisFrame(KeyCode keyCode)
+        {
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(keyCode);
+#elif ENABLE_INPUT_SYSTEM
+            return InputSystemKeyPressedThisFrame(keyCode);
+#else
+            return false;
+#endif
+        }
+
+        private static int GetActiveTouchCount()
+        {
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.touchCount;
+#elif ENABLE_INPUT_SYSTEM
+            return GetInputSystemTouchCount();
+#else
+            return 0;
+#endif
+        }
+
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        // Use reflection so this package's core assembly remains optional-dependency safe. A
+        // direct Unity.InputSystem reference in this asmdef would force every SDK consumer to
+        // install the Input System package, including legacy-input-only projects.
+        private static bool InputSystemKeyPressedThisFrame(KeyCode keyCode)
+        {
+            try
+            {
+                var keyboardType = Type.GetType("UnityEngine.InputSystem.Keyboard, Unity.InputSystem");
+                var keyType = Type.GetType("UnityEngine.InputSystem.Key, Unity.InputSystem");
+                if (keyboardType == null || keyType == null)
+                    return false;
+
+                var keyboard = keyboardType.GetProperty("current")?.GetValue(null);
+                if (keyboard == null || !TryMapKeyCodeToInputSystemKeyName(keyCode, out var keyName))
+                    return false;
+
+                var key = Enum.Parse(keyType, keyName);
+                var control = keyboardType.GetProperty("Item", new[] { keyType })
+                    ?.GetValue(keyboard, new[] { key });
+                var pressed = control?.GetType().GetProperty("wasPressedThisFrame")?.GetValue(control);
+                return pressed is bool wasPressed && wasPressed;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static int GetInputSystemTouchCount()
+        {
+            try
+            {
+                var touchscreenType = Type.GetType("UnityEngine.InputSystem.Touchscreen, Unity.InputSystem");
+                var touchscreen = touchscreenType?.GetProperty("current")?.GetValue(null);
+                var touches = touchscreenType?.GetProperty("touches")?.GetValue(touchscreen)
+                    as System.Collections.IEnumerable;
+                if (touches == null)
+                    return 0;
+
+                var count = 0;
+                foreach (var touch in touches)
+                {
+                    var press = touch?.GetType().GetProperty("press")?.GetValue(touch);
+                    var isPressed = press?.GetType().GetProperty("isPressed")?.GetValue(press);
+                    if (isPressed is bool pressed && pressed)
+                        count++;
+                }
+
+                return count;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
+        private static bool TryMapKeyCodeToInputSystemKeyName(KeyCode keyCode, out string keyName)
+        {
+            switch (keyCode)
+            {
+                case KeyCode.Alpha0: keyName = "Digit0"; return true;
+                case KeyCode.Alpha1: keyName = "Digit1"; return true;
+                case KeyCode.Alpha2: keyName = "Digit2"; return true;
+                case KeyCode.Alpha3: keyName = "Digit3"; return true;
+                case KeyCode.Alpha4: keyName = "Digit4"; return true;
+                case KeyCode.Alpha5: keyName = "Digit5"; return true;
+                case KeyCode.Alpha6: keyName = "Digit6"; return true;
+                case KeyCode.Alpha7: keyName = "Digit7"; return true;
+                case KeyCode.Alpha8: keyName = "Digit8"; return true;
+                case KeyCode.Alpha9: keyName = "Digit9"; return true;
+                case KeyCode.Keypad0: keyName = "Numpad0"; return true;
+                case KeyCode.Keypad1: keyName = "Numpad1"; return true;
+                case KeyCode.Keypad2: keyName = "Numpad2"; return true;
+                case KeyCode.Keypad3: keyName = "Numpad3"; return true;
+                case KeyCode.Keypad4: keyName = "Numpad4"; return true;
+                case KeyCode.Keypad5: keyName = "Numpad5"; return true;
+                case KeyCode.Keypad6: keyName = "Numpad6"; return true;
+                case KeyCode.Keypad7: keyName = "Numpad7"; return true;
+                case KeyCode.Keypad8: keyName = "Numpad8"; return true;
+                case KeyCode.Keypad9: keyName = "Numpad9"; return true;
+                case KeyCode.Return: keyName = "Enter"; return true;
+                case KeyCode.KeypadEnter: keyName = "NumpadEnter"; return true;
+                case KeyCode.LeftControl: keyName = "LeftCtrl"; return true;
+                case KeyCode.RightControl: keyName = "RightCtrl"; return true;
+                case KeyCode.LeftCommand: keyName = "LeftMeta"; return true;
+                case KeyCode.RightCommand: keyName = "RightMeta"; return true;
+                case KeyCode.BackQuote: keyName = "Backquote"; return true;
+                default:
+                    keyName = keyCode.ToString();
+                    return true;
+            }
+        }
+#endif
 
         private void HandleRequestResult(RequestResult result)
         {
