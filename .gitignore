@@ -1,3 +1,16 @@
 .DS_Store
 .stfolder
 .stignore
+
+# Generated verification evidence
+artifacts/
+
+# Consumer/local secret-bearing AudienceLab assets (never commit tokens)
+Assets/Resources/SDKSettings.asset
+Assets/Resources/SDKSettings.asset.meta
+Assets/Resources/AudienceLabSettings.asset
+Assets/Resources/AudienceLabSettings.asset.meta
+**/*SDKSettings*.asset
+**/*AudienceLab*Token*
+.audiencelab/
+*.audiencelab.secrets.json

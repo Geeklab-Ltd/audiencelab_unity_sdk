@@ -1,5 +1,25 @@
 # AudienceLab Documentation
 
+## Agent integration contract (GEE-516)
+
+Agents should treat the published contract as the install/configure/verify source of truth:
+
+- Contract: [`contracts/v1/audiencelab-unity-integration.contract.json`](contracts/v1/audiencelab-unity-integration.contract.json)
+- Guide: [`docs/agent-integration-contract.md`](docs/agent-integration-contract.md)
+- Verify locally (no Unity Editor required):
+
+```bash
+python3 scripts/verify_integration_contract.py --write-evidence artifacts/integration-contract-evidence.json
+```
+
+Pin installs to a version tag (example for the current package):
+
+```
+https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git#1.1.9
+```
+
+Keep application API tokens out of source control. Sandbox signal success does not mean analysis-ready.
+
 ## Introduction
 
 In the wake of Apple's ATT, mobile advertisers have lost visibility into ad performance on iOS, a challenge that will intensify with Google's upcoming privacy sandbox. Geeklab is committed to providing a privacy-centric marketing performance analytics platform that aggregates results at the device level and delivers metrics at a creative level, bypassing user-level data.
@@ -28,10 +48,11 @@ There are two ways to integrate the AudienceLab SDK into your Unity project:
 1. Open the Unity Package Manager (Window > Package Manager)
 2. Click the "+" button in the top-left corner
 3. Select "Add package from git URL..."
-4. Enter the following URL:
+4. Enter a **version-pinned** URL (preferred for agents and reproducible builds):
    ```
-   https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git
+   https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git#1.1.9
    ```
+   Tracking `main` without a tag is supported for development only.
 5. Click "Add"
 
 #### Option 2: Manual Installation

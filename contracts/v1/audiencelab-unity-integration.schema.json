@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geeklab.app/contracts/audiencelab-unity-integration/v1/schema.json",
+  "title": "AudienceLab Unity Integration Contract",
+  "description": "Machine-readable contract that an agent can use to install, configure, signal, and verify the AudienceLab Unity SDK without private instructions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "contractId",
+    "issueRefs",
+    "package",
+    "compatibility",
+    "install",
+    "credentials",
+    "configuration",
+    "consent",
+    "signals",
+    "diagnostics",
+    "verification",
+    "rollback",
+    "outOfScope",
+    "secretsPolicy"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "contractId": {
+      "type": "string",
+      "const": "audiencelab.unity.integration"
+    },
+    "issueRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "url"],
+        "properties": {
+          "id": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "displayName",
+        "version",
+        "sdkType",
+        "repository",
+        "versionSources",
+        "dependencies"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "displayName": { "type": "string" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "sdkType": { "type": "string", "const": "Unity" },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "url", "gitUrl"],
+          "properties": {
+            "type": { "type": "string" },
+            "url": { "type": "string" },
+            "gitUrl": { "type": "string" }
+          }
+        },
+        "versionSources": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "field", "mustMatchPackageVersion"],
+            "properties": {
+              "path": { "type": "string" },
+              "field": { "type": "string" },
+              "mustMatchPackageVersion": { "type": "boolean" }
+            }
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unity", "platforms", "notes"],
+      "properties": {
+        "unity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "declaredInPackageJson", "supported"],
+          "properties": {
+            "minimum": { "type": "string" },
+            "declaredInPackageJson": { "type": "string" },
+            "supported": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" }
+            },
+            "untested": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status"],
+            "properties": {
+              "id": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["supported", "partial", "unsupported"]
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "install": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deterministic", "methods", "postInstallChecks"],
+      "properties": {
+        "deterministic": { "type": "boolean" },
+        "methods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "recommended", "steps"],
+            "properties": {
+              "id": { "type": "string" },
+              "recommended": { "type": "boolean" },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string" }
+              },
+              "manifestExample": { "type": "object" }
+            }
+          }
+        },
+        "postInstallChecks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "androidBuildRequirements": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applicationApiKey", "storage", "verificationEndpoint"],
+      "properties": {
+        "applicationApiKey": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "delivery", "never"],
+          "properties": {
+            "name": { "type": "string" },
+            "delivery": { "type": "string" },
+            "never": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["assetPath", "field", "sourceControl"],
+          "properties": {
+            "assetPath": { "type": "string" },
+            "field": { "type": "string" },
+            "sourceControl": { "type": "string" }
+          }
+        },
+        "verificationEndpoint": { "type": "string", "format": "uri" },
+        "editorFlow": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredSettings", "recommendedSettings", "publicApis"],
+      "properties": {
+        "requiredSettings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "value", "purpose"],
+            "properties": {
+              "path": { "type": "string" },
+              "value": {},
+              "purpose": { "type": "string" }
+            }
+          }
+        },
+        "recommendedSettings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "value", "purpose"],
+            "properties": {
+              "path": { "type": "string" },
+              "value": {},
+              "purpose": { "type": "string" }
+            }
+          }
+        },
+        "publicApis": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["symbol", "purpose"],
+            "properties": {
+              "symbol": { "type": "string" },
+              "purpose": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "controls", "identifiers", "loggingRules"],
+      "properties": {
+        "model": { "type": "string" },
+        "controls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "surface", "effect"],
+            "properties": {
+              "id": { "type": "string" },
+              "surface": { "type": "string" },
+              "effect": { "type": "string" }
+            }
+          }
+        },
+        "identifiers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["collected", "notCollected"],
+          "properties": {
+            "collected": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["type", "platforms", "notes"],
+                "properties": {
+                  "type": { "type": "string" },
+                  "platforms": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "notes": { "type": "string" }
+                }
+              }
+            },
+            "notCollected": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "loggingRules": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport", "minimumForReadiness", "catalog"],
+      "properties": {
+        "transport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["baseUrl", "endpoints"],
+          "properties": {
+            "baseUrl": { "type": "string", "format": "uri" },
+            "endpoints": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "minimumForReadiness": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "required", "source", "acceptance"],
+            "properties": {
+              "id": { "type": "string" },
+              "required": { "type": "boolean" },
+              "source": {
+                "type": "string",
+                "enum": ["automatic", "integrator", "either"]
+              },
+              "acceptance": { "type": "string" }
+            }
+          }
+        },
+        "catalog": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["eventType", "source", "payloadFields"],
+            "properties": {
+              "eventType": { "type": "string" },
+              "source": {
+                "type": "string",
+                "enum": ["automatic", "integrator", "either"]
+              },
+              "api": { "type": "string" },
+              "payloadFields": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["editor", "runtime", "evidenceFields"],
+      "properties": {
+        "editor": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "runtime": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidenceFields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["localCommand", "evidencePath", "checks", "agentPassCriteria"],
+      "properties": {
+        "localCommand": { "type": "string" },
+        "evidencePath": { "type": "string" },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "description"],
+            "properties": {
+              "id": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "agentPassCriteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "runtimeProof": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packagePinning", "steps", "compatibilityNotes"],
+      "properties": {
+        "packagePinning": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "compatibilityNotes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "outOfScope": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "secretsPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rules", "consumerGitignore"],
+      "properties": {
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "consumerGitignore": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

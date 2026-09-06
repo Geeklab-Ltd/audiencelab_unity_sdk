@@ -1,0 +1,480 @@
+{
+  "contractVersion": "1.0",
+  "contractId": "audiencelab.unity.integration",
+  "issueRefs": [
+    {
+      "id": "GEE-516",
+      "url": "https://linear.app/geeklabltd/issue/GEE-516/unity-sdk-publish-an-agent-verifiable-audiencelab-integration-contract"
+    },
+    {
+      "id": "GEE-481",
+      "url": "https://linear.app/geeklabltd/issue/GEE-481/approval-approve-app-integration-credential-and-readiness-contract"
+    }
+  ],
+  "package": {
+    "name": "com.geeklab.audiencelab-sdk",
+    "displayName": "Audiencelab SDK",
+    "version": "1.1.9",
+    "sdkType": "Unity",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/Geeklab-Ltd/audiencelab_unity_sdk",
+      "gitUrl": "https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git"
+    },
+    "versionSources": [
+      {
+        "path": "package.json",
+        "field": "version",
+        "mustMatchPackageVersion": true
+      },
+      {
+        "path": "Runtime/Scripts/Models/SDKVersion.cs",
+        "field": "VERSION",
+        "mustMatchPackageVersion": true
+      }
+    ],
+    "dependencies": {
+      "com.unity.nuget.newtonsoft-json": "3.0.2"
+    }
+  },
+  "compatibility": {
+    "unity": {
+      "minimum": "2023.1",
+      "declaredInPackageJson": "2023.1",
+      "supported": [
+        "2023.1",
+        "2023.2",
+        "6000.0"
+      ],
+      "untested": [
+        "2022.3 LTS (below package minimum; not certified by this contract)"
+      ]
+    },
+    "platforms": [
+      {
+        "id": "ios",
+        "status": "supported",
+        "notes": "Uses IDFV (ifv). IDFA is not returned by this SDK version."
+      },
+      {
+        "id": "android",
+        "status": "supported",
+        "notes": "Prefers GAID (ga), then App Set ID (asid), then Android ID (aid). Play Services may be required when auto GAID/App Set ID collection is enabled."
+      },
+      {
+        "id": "editor",
+        "status": "partial",
+        "notes": "Editor is supported for configuration, token verify, and debug overlay. Device identity and production readiness require a player build on a supported platform."
+      }
+    ],
+    "notes": [
+      "package.json unity field is the minimum Unity version for UPM resolution.",
+      "Store submission / signed attestation workflows are Phase 3 (GEE-528) and out of scope for this contract.",
+      "Backend analysis-readiness is authoritative (GEE-525); this contract only proves local integration attestation."
+    ]
+  },
+  "install": {
+    "deterministic": true,
+    "methods": [
+      {
+        "id": "upm-git-url",
+        "recommended": true,
+        "steps": [
+          "Open Window > Package Manager",
+          "Click + > Add package from git URL...",
+          "Enter https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git#1.1.9",
+          "Click Add and wait for dependency resolution"
+        ],
+        "manifestExample": {
+          "dependencies": {
+            "com.geeklab.audiencelab-sdk": "https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git#1.1.9"
+          }
+        }
+      },
+      {
+        "id": "upm-git-main",
+        "recommended": false,
+        "steps": [
+          "Use only when explicitly directed to track main",
+          "Enter https://github.com/Geeklab-Ltd/audiencelab_unity_sdk.git without a version tag",
+          "Prefer a tagged version for agent-verifiable installs"
+        ]
+      },
+      {
+        "id": "manual-packages-folder",
+        "recommended": false,
+        "steps": [
+          "Download or clone the repository at tag/version 1.1.9",
+          "Place the package contents under Packages/com.geeklab.audiencelab-sdk",
+          "Reload the Unity project and confirm Package Manager shows Audiencelab SDK 1.1.9"
+        ]
+      }
+    ],
+    "postInstallChecks": [
+      "Package Manager lists com.geeklab.audiencelab-sdk at version 1.1.9",
+      "com.unity.nuget.newtonsoft-json resolves at >= 3.0.2",
+      "Assemblies geeklab.audiencelab-sdk and geeklab.audiencelab-sdk.Editor compile without errors",
+      "Menu item Audiencelab SDK/SDK Settings is available"
+    ],
+    "androidBuildRequirements": [
+      "When GAID or App Set ID auto-collection is enabled, ensure Play Services dependencies resolve via EDM or mainTemplate.gradle",
+      "Keep AndroidManifest INTERNET and ACCESS_NETWORK_STATE permissions",
+      "AD_ID permission is declared by the SDK AndroidManifest when GAID collection is used",
+      "For release obfuscation, add ProGuard keep rule: -keep class com.Geeklab.plugin.** { *; }"
+    ]
+  },
+  "credentials": {
+    "applicationApiKey": {
+      "name": "AudienceLab application API token",
+      "delivery": "Obtain via authorized AudienceLab credential handoff for the entitled workspace+app (GEE-481). Prefer short-lived / one-time retrieval into the integration host.",
+      "never": [
+        "Commit the raw key to source control",
+        "Write the raw key into ordinary logs, analytics events, or shared audit payloads",
+        "Reuse a sandbox key as production proof of readiness",
+        "Expose the key through MCP tool results intended for durable transcripts when a one-time handoff is available"
+      ]
+    },
+    "storage": {
+      "assetPath": "Assets/Resources/SDKSettings.asset",
+      "field": "Token",
+      "sourceControl": "Keep consumer project token-bearing assets out of git. See secretsPolicy.consumerGitignore."
+    },
+    "verificationEndpoint": "https://analytics.geeklab.app/auth",
+    "editorFlow": [
+      "Open Audiencelab SDK > SDK Settings",
+      "Paste the application API token",
+      "Click Verify Geeklab API Token",
+      "Enable IsSDKEnabled and SendStatistics",
+      "Save assets and restart Unity if prompted so Resources settings reload"
+    ]
+  },
+  "configuration": {
+    "requiredSettings": [
+      {
+        "path": "SDKSettings.Token",
+        "value": "<application-api-token>",
+        "purpose": "Authenticates the app installation to AudienceLab"
+      },
+      {
+        "path": "SDKSettings.IsSDKEnabled",
+        "value": true,
+        "purpose": "Allows runtime initialization"
+      },
+      {
+        "path": "SDKSettings.SendStatistics",
+        "value": true,
+        "purpose": "Allows signal delivery required for readiness"
+      }
+    ],
+    "recommendedSettings": [
+      {
+        "path": "SDKSettings.ShowDebugLog",
+        "value": true,
+        "purpose": "Surface integration diagnostics during bring-up"
+      },
+      {
+        "path": "AudienceLabSettings.enableDebugOverlay",
+        "value": true,
+        "purpose": "Editor/Development builds only; inspect webhook and fetch-token results"
+      },
+      {
+        "path": "AudienceLabSettings.showRawIdentifiers",
+        "value": false,
+        "purpose": "Keep raw stable identifiers out of logs unless actively debugging identity"
+      }
+    ],
+    "publicApis": [
+      {
+        "symbol": "AudiencelabSDK.GetSDKVersion()",
+        "purpose": "Return SDK version string; must equal package version"
+      },
+      {
+        "symbol": "AudiencelabSDK.GetCreativeToken()",
+        "purpose": "Return installation creative token after registration succeeds"
+      },
+      {
+        "symbol": "AudiencelabSDK.GetPreferredIdentifierAsync()",
+        "purpose": "Wait for identity collection and return preferred hybrid identifier"
+      },
+      {
+        "symbol": "AudiencelabSDK.ToggleMetricsCollection(bool)",
+        "purpose": "Runtime consent gate for outbound statistics"
+      },
+      {
+        "symbol": "AudiencelabSDK.SendPurchaseEvent(...)",
+        "purpose": "Send purchase signal"
+      },
+      {
+        "symbol": "AudiencelabSDK.SendAdEvent(...)",
+        "purpose": "Send ad revenue/view signal"
+      },
+      {
+        "symbol": "AudiencelabSDK.SendCustomEvent(...)",
+        "purpose": "Send custom event with JSON-safe properties"
+      }
+    ]
+  },
+  "consent": {
+    "model": "Integrator-controlled. The SDK does not present a user-facing consent UI. The host app must gate collection using product/legal policy and the SDK toggles below before claiming production readiness.",
+    "controls": [
+      {
+        "id": "sdk-enabled",
+        "surface": "SDKSettings.IsSDKEnabled",
+        "effect": "When false, SDK does not initialize and no signals are sent"
+      },
+      {
+        "id": "send-statistics",
+        "surface": "SDKSettings.SendStatistics / AudiencelabSDK.ToggleMetricsCollection",
+        "effect": "When false, webhook and related statistics remain paused; queued events resume when re-enabled"
+      },
+      {
+        "id": "gaid-collection",
+        "surface": "SDKSettings.EnableGaidCollection + AudienceLabSettings.enableGaidAutoCollection/enableGaidManualMode",
+        "effect": "Controls Android advertising ID collection; disable when policy or store rules require it"
+      },
+      {
+        "id": "app-set-id-collection",
+        "surface": "AudienceLabSettings.enableAppSetIdAutoCollection",
+        "effect": "Controls Android App Set ID auto-collection and associated Play Services dependency generation"
+      }
+    ],
+    "identifiers": {
+      "collected": [
+        {
+          "type": "ifv",
+          "platforms": ["ios"],
+          "notes": "Preferred iOS identifier for hybrid Unity + server-side integrations"
+        },
+        {
+          "type": "ga",
+          "platforms": ["android"],
+          "notes": "GAID when auto or manual collection is enabled and available"
+        },
+        {
+          "type": "asid",
+          "platforms": ["android"],
+          "notes": "App Set ID fallback when enabled"
+        },
+        {
+          "type": "aid",
+          "platforms": ["android"],
+          "notes": "Android ID fallback; no Play Services required"
+        },
+        {
+          "type": "lat",
+          "platforms": ["ios", "android"],
+          "notes": "Limit-ad-tracking style flag when the platform reports it"
+        }
+      ],
+      "notCollected": [
+        "idfa (not returned by this SDK version)",
+        "Raw application API tokens in webhook payloads"
+      ]
+    },
+    "loggingRules": [
+      "Do not log raw application API tokens",
+      "Routine identity debug messages must report availability without logging raw stable identifier values unless showRawIdentifiers is explicitly enabled for a local debug session",
+      "Audit systems may record credential issuance/use metadata only, never the raw key"
+    ]
+  },
+  "signals": {
+    "transport": {
+      "baseUrl": "https://analytics.geeklab.app/",
+      "endpoints": {
+        "verifyApiKey": "https://analytics.geeklab.app/auth",
+        "fetchToken": "https://analytics.geeklab.app/fetch-token",
+        "deviceMetrics": "https://analytics.geeklab.app/store-metrics",
+        "webhook": "https://analytics.geeklab.app/webhook"
+      }
+    },
+    "minimumForReadiness": [
+      {
+        "id": "token-verified",
+        "required": true,
+        "source": "integrator",
+        "acceptance": "Editor verify call against /auth succeeds for the intended environment token"
+      },
+      {
+        "id": "installation-registered",
+        "required": true,
+        "source": "automatic",
+        "acceptance": "Player build obtains a non-empty creative token via /fetch-token (AudiencelabSDK.GetCreativeToken())"
+      },
+      {
+        "id": "session-start",
+        "required": true,
+        "source": "automatic",
+        "acceptance": "At least one accepted webhook event_type=session with payload.a=start is observed for the production (or approved prod-like) app"
+      },
+      {
+        "id": "device-metrics",
+        "required": false,
+        "source": "automatic",
+        "acceptance": "store-metrics request succeeds; strengthens readiness evidence but is not alone sufficient"
+      },
+      {
+        "id": "business-signal",
+        "required": false,
+        "source": "integrator",
+        "acceptance": "When the app monetizes, send at least one purchase or ad event; required by backend policy when those data sources are declared"
+      }
+    ],
+    "catalog": [
+      {
+        "eventType": "session",
+        "source": "automatic",
+        "payloadFields": ["a", "sid", "si", "r", "sd"],
+        "notes": "a=start|end; end includes reason r and duration sd"
+      },
+      {
+        "eventType": "retention",
+        "source": "automatic",
+        "payloadFields": ["retentionDay", "backfillDay"]
+      },
+      {
+        "eventType": "purchase",
+        "source": "integrator",
+        "api": "AudiencelabSDK.SendPurchaseEvent(id, name, value, currency, status, tr_id?)",
+        "payloadFields": [
+          "item_id",
+          "item_name",
+          "value",
+          "currency",
+          "status",
+          "total_purchase_value",
+          "tr_id"
+        ]
+      },
+      {
+        "eventType": "ad",
+        "source": "integrator",
+        "api": "AudiencelabSDK.SendAdEvent(ad_id, name, source, watch_time, reward, media_source, channel, value, currency, dedupeKey?)",
+        "payloadFields": [
+          "ad_id",
+          "name",
+          "source",
+          "watch_time",
+          "reward",
+          "media_source",
+          "channel",
+          "value",
+          "currency",
+          "total_ad_value"
+        ]
+      },
+      {
+        "eventType": "custom",
+        "source": "integrator",
+        "api": "AudiencelabSDK.SendCustomEvent(eventName, properties?, dedupeKey?)",
+        "payloadFields": ["en", "pr"],
+        "notes": "properties must be JSON-safe primitives, dictionaries, or lists"
+      }
+    ]
+  },
+  "diagnostics": {
+    "editor": [
+      "Audiencelab SDK > SDK Settings token verification status",
+      "Android dependency validation messages in SDK Settings (EDM / Gradle)",
+      "ShowDebugLog console prefix: AudiencelabSDK =>"
+    ],
+    "runtime": [
+      "Development Build debug overlay (F8 or five-finger tap) when enableDebugOverlay is true",
+      "WebRequestManager request results for fetch-token and webhook event types",
+      "AudiencelabSDK.GetCreativeToken(), GetSDKVersion(), GetPreferredIdentifierAsync()"
+    ],
+    "evidenceFields": [
+      "package.name",
+      "package.version",
+      "unity.version",
+      "platform",
+      "creativeTokenPresent",
+      "sdkEnabled",
+      "sendStatistics",
+      "lastAcceptedEventType",
+      "verification.passed",
+      "verification.checks"
+    ]
+  },
+  "verification": {
+    "localCommand": "python3 scripts/verify_integration_contract.py --write-evidence artifacts/integration-contract-evidence.json",
+    "evidencePath": "artifacts/integration-contract-evidence.json",
+    "checks": [
+      {
+        "id": "contract-schema",
+        "description": "Contract validates against contracts/v1/audiencelab-unity-integration.schema.json"
+      },
+      {
+        "id": "package-version-sync",
+        "description": "package.json version, SDKVersion.VERSION, and contract package.version are identical"
+      },
+      {
+        "id": "install-pin",
+        "description": "Recommended git install URL pins the contract package version tag"
+      },
+      {
+        "id": "required-package-files",
+        "description": "Required Runtime/Editor/Plugins package files referenced by the contract exist"
+      },
+      {
+        "id": "secrets-hygiene",
+        "description": "No consumer token assets are tracked; .gitignore includes secret path patterns"
+      },
+      {
+        "id": "unity-minimum",
+        "description": "Contract unity.minimum matches package.json unity field"
+      }
+    ],
+    "agentPassCriteria": [
+      "verify_integration_contract.py exits 0",
+      "evidence JSON verification.passed == true",
+      "All checks[].status == pass",
+      "For runtime certification: creative token present and at least one accepted session_start signal in the target environment"
+    ],
+    "runtimeProof": [
+      "Build a Development player for a supported platform with IsSDKEnabled and SendStatistics true",
+      "Confirm GetCreativeToken() is non-empty",
+      "Confirm overlay or backend health shows accepted session webhook",
+      "Do not treat sandbox-only acceptance as production analysis-ready"
+    ]
+  },
+  "rollback": {
+    "packagePinning": "Always pin Packages/manifest.json to a git tag (for example #1.1.9). Avoid floating main for production apps.",
+    "steps": [
+      "Change com.geeklab.audiencelab-sdk dependency to the last known-good tag",
+      "Delete Library/PackageCache/com.geeklab.audiencelab-sdk* if Unity retains a stale resolve",
+      "Re-open Unity, re-verify the API token, and rebuild the player",
+      "If Android dependency files were regenerated, re-run EDM resolve or rebuild so Play Services match the rolled-back settings",
+      "Confirm GetSDKVersion() matches the rolled-back tag before sending new production traffic"
+    ],
+    "compatibilityNotes": [
+      "Minor/patch SDK versions in 1.1.x are intended to be additive for public APIs used by this contract",
+      "If a contractVersion major changes, agents must re-read the new contract before integrating",
+      "Rolling back the package does not rotate credentials; revoke/rotate keys separately through AudienceLab credential APIs when compromise is suspected"
+    ]
+  },
+  "outOfScope": [
+    "Store submission automation and signed build attestations (GEE-528 / Phase 3)",
+    "Backend analysis-readiness state machine implementation (GEE-525)",
+    "MCP app registration tool surface (GEE-436)",
+    "Native iOS/Android SDK contracts (GEE-510 / GEE-518)",
+    "Changing Unity runtime SDK behavior beyond documentation and verification affordances"
+  ],
+  "secretsPolicy": {
+    "rules": [
+      "Application API tokens are secrets and must remain outside source control",
+      "Prefer environment/secret-manager injection or local unsynced Unity assets for token storage",
+      "Verification evidence must redact token values; only record present/absent and last-4 if explicitly required by a secure host",
+      "This repository must not add sample production tokens"
+    ],
+    "consumerGitignore": [
+      "Assets/Resources/SDKSettings.asset",
+      "Assets/Resources/SDKSettings.asset.meta",
+      "Assets/Resources/AudienceLabSettings.asset",
+      "Assets/Resources/AudienceLabSettings.asset.meta",
+      "**/*SDKSettings*.asset",
+      "**/*AudienceLab*Token*",
+      ".audiencelab/",
+      "*.audiencelab.secrets.json"
+    ]
+  }
+}
