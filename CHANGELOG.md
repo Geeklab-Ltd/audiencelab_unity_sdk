@@ -5,6 +5,13 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Published an agent-verifiable AudienceLab Unity integration contract (`contracts/v1`) with JSON Schema, human guide, and `scripts/verify_integration_contract.py` evidence path (GEE-516).
+- Documented deterministic package pinning, required signals, consent controls, diagnostics, secrets hygiene, compatibility, and rollback for supported Unity versions.
+
 ## [1.1.9] - 2026-08-25
 
 ### Added
